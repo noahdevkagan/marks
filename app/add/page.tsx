@@ -25,6 +25,8 @@ function AddForm() {
   const [tags, setTags] = useState<string[]>([]);
   const [readLater, setReadLater] = useState(false);
   const [recentTags, setRecentTags] = useState<string[]>([]);
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const isPopup = searchParams.has("url");
@@ -52,6 +54,37 @@ function AddForm() {
           .map(([name]) => name);
         setRecentTags(sorted);
       });
+  }, []);
+
+  async function fetchSuggestedTags(linkUrl: string) {
+    if (!linkUrl) return;
+    try {
+      new URL(linkUrl);
+    } catch {
+      return;
+    }
+    setLoadingSuggestions(true);
+    try {
+      const res = await fetch(
+        `/api/suggest-tags?url=${encodeURIComponent(linkUrl)}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestedTags(data.tags ?? []);
+      }
+    } catch {
+      // Silently fail — suggestions are optional
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }
+
+  // Auto-fetch suggestions when page loads with a URL (bookmarklet)
+  useEffect(() => {
+    if (url) {
+      fetchSuggestedTags(url);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function addTag(tag: string) {
@@ -125,6 +158,7 @@ function AddForm() {
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
+          onBlur={(e) => fetchSuggestedTags(e.target.value)}
           placeholder="https://..."
           required
           autoFocus={!isPopup}
@@ -168,6 +202,31 @@ function AddForm() {
             className="tag-text-input"
           />
         </div>
+
+        {loadingSuggestions && (
+          <div className="suggested-tags">
+            <span className="suggested-tags-label">Suggesting tags…</span>
+          </div>
+        )}
+
+        {!loadingSuggestions &&
+          suggestedTags.filter((t) => !tags.includes(t)).length > 0 && (
+            <div className="suggested-tags">
+              <span className="suggested-tags-label">Suggested:</span>
+              {suggestedTags
+                .filter((t) => !tags.includes(t))
+                .map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className="tag suggested-tag"
+                    onClick={() => addTag(t)}
+                  >
+                    + {t}
+                  </button>
+                ))}
+            </div>
+          )}
 
         {recentTags.length > 0 && (
           <div className="recent-tags">

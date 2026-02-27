@@ -30,8 +30,6 @@ type PinboardBookmark = {
 };
 
 const BATCH_SIZE = 100;
-const SIXTY_DAYS_AGO = new Date();
-SIXTY_DAYS_AGO.setDate(SIXTY_DAYS_AGO.getDate() - 60);
 
 async function main() {
   const filePath = process.argv[2] ?? "./pinboard_export.json";
@@ -52,9 +50,8 @@ async function main() {
   const all: PinboardBookmark[] = JSON.parse(raw);
   console.log(`Total bookmarks in file: ${all.length}`);
 
-  // Filter to last 60 days
-  const bookmarks = all.filter((b) => new Date(b.time) >= SIXTY_DAYS_AGO);
-  console.log(`Bookmarks in last 60 days: ${bookmarks.length}`);
+  const bookmarks = all;
+  console.log(`Bookmarks to import: ${bookmarks.length}`);
 
   if (bookmarks.length === 0) {
     console.log("Nothing to import.");

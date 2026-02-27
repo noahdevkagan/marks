@@ -237,17 +237,29 @@ async function attachTags(bookmarks: Bookmark[]): Promise<BookmarkWithTags[]> {
 export async function getAllTags(): Promise<{ name: string; count: number }[]> {
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("bookmark_tags")
-    .select("tag_id, tags(name)");
+  // Fetch all bookmark_tags rows (default limit is 1000, so paginate)
+  const allRows: { tag_id: number; tags: { name: string } }[] = [];
+  const PAGE = 1000;
+  let offset = 0;
 
-  if (!data) return [];
+  while (true) {
+    const { data } = await supabase
+      .from("bookmark_tags")
+      .select("tag_id, tags(name)")
+      .range(offset, offset + PAGE - 1);
+
+    if (!data || data.length === 0) break;
+
+    allRows.push(
+      ...(data as unknown as { tag_id: number; tags: { name: string } }[]),
+    );
+
+    if (data.length < PAGE) break;
+    offset += PAGE;
+  }
 
   const counts = new Map<string, number>();
-  for (const row of data as unknown as {
-    tag_id: number;
-    tags: { name: string };
-  }[]) {
+  for (const row of allRows) {
     const name = row.tags?.name;
     if (!name) continue;
     counts.set(name, (counts.get(name) ?? 0) + 1);

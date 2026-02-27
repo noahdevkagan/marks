@@ -104,6 +104,42 @@ function parseWithReadability(
   }
 }
 
+export type PageMetadata = {
+  title: string;
+  description: string;
+  keywords: string;
+};
+
+export async function extractMetadata(url: string): Promise<PageMetadata> {
+  try {
+    const res = await fetch(url, {
+      headers: FETCH_HEADERS,
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!res.ok) return { title: "", description: "", keywords: "" };
+
+    const html = await res.text();
+    const dom = new JSDOM(html, { url });
+    const doc = dom.window.document;
+
+    const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute("content");
+    const titleEl = doc.querySelector("title")?.textContent;
+    const title = (ogTitle || titleEl || "").trim();
+
+    const ogDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute("content");
+    const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute("content");
+    const description = (ogDesc || metaDesc || "").trim();
+
+    const keywords = doc.querySelector('meta[name="keywords"]')?.getAttribute("content") || "";
+
+    return { title, description, keywords };
+  } catch {
+    return { title: "", description: "", keywords: "" };
+  }
+}
+
 // For manual "try archive.ph" button — forces archive.ph regardless
 export async function extractViaArchive(
   url: string,

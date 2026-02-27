@@ -26,6 +26,8 @@ function AddForm() {
   const [readLater, setReadLater] = useState(false);
   const [recentTags, setRecentTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [fetchingMeta, setFetchingMeta] = useState(false);
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [error, setError] = useState("");
   const isPopup = searchParams.has("url");
 
@@ -76,6 +78,39 @@ function AddForm() {
     }
   }
 
+  async function fetchMetadata(targetUrl: string) {
+    try {
+      new URL(targetUrl);
+    } catch {
+      return;
+    }
+    setFetchingMeta(true);
+    try {
+      const res = await fetch(`/api/metadata?url=${encodeURIComponent(targetUrl)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.title) setTitle((prev) => prev || data.title);
+      if (data.suggestedTags?.length) setSuggestedTags(data.suggestedTags);
+    } catch {
+      // ignore fetch errors
+    } finally {
+      setFetchingMeta(false);
+    }
+  }
+
+  // Fetch metadata on mount when URL comes from bookmarklet/params
+  useEffect(() => {
+    if (searchParams.has("url")) {
+      fetchMetadata(searchParams.get("url")!);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleUrlBlur() {
+    if (!url || suggestedTags.length > 0) return;
+    fetchMetadata(url);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!url) return;
@@ -102,6 +137,8 @@ function AddForm() {
 
       if (isPopup) {
         window.close();
+        // If window.close() is a no-op (navigated, not a popup), redirect
+        setTimeout(() => { window.location.href = "/"; }, 300);
       } else {
         router.push("/");
         router.refresh();
@@ -125,12 +162,13 @@ function AddForm() {
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
+          onBlur={handleUrlBlur}
           placeholder="https://..."
           required
           autoFocus={!isPopup}
         />
 
-        <label htmlFor="title">Title</label>
+        <label htmlFor="title">Title{fetchingMeta && <span className="fetching-indicator"> (fetching...)</span>}</label>
         <input
           id="title"
           type="text"
@@ -169,12 +207,15 @@ function AddForm() {
           />
         </div>
 
-        {recentTags.length > 0 && (
-          <div className="recent-tags">
-            {recentTags
-              .filter((t) => !tags.includes(t))
-              .slice(0, 10)
-              .map((t) => (
+        {(() => {
+          const suggested = suggestedTags.filter((t) => !tags.includes(t));
+          const recent = recentTags.filter((t) => !tags.includes(t));
+          // Show suggested tags if available, otherwise fall back to recent tags
+          const combined = suggested.length > 0 ? suggested : recent.slice(0, 10);
+          if (combined.length === 0) return null;
+          return (
+            <div className="recent-tags">
+              {combined.map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -184,8 +225,9 @@ function AddForm() {
                   {t}
                 </button>
               ))}
-          </div>
-        )}
+            </div>
+          );
+        })()}
 
         <label className="checkbox-label">
           <input

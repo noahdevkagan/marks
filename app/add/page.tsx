@@ -16,20 +16,29 @@ function AddForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [url, setUrl] = useState(searchParams.get("url") ?? "");
-  const [title, setTitle] = useState(searchParams.get("title") ?? "");
-  const [description, setDescription] = useState(
-    searchParams.get("description") ?? "",
-  );
+  // Handle share intent: some apps send URL in "text" param instead of "url"
+  const rawUrl = searchParams.get("url") ?? "";
+  const rawText = searchParams.get("description") ?? searchParams.get("text") ?? "";
+  const rawTitle = searchParams.get("title") ?? "";
+  const urlMatch = !rawUrl && rawText ? rawText.match(/(https?:\/\/[^\s]+)/) : null;
+  const initialUrl = rawUrl || (urlMatch ? urlMatch[1] : "");
+  const initialDescription = urlMatch
+    ? rawText.replace(urlMatch[1], "").trim()
+    : rawText;
+
+  const [url, setUrl] = useState(initialUrl);
+  const [title, setTitle] = useState(rawTitle);
+  const [description, setDescription] = useState(initialDescription);
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [readLater, setReadLater] = useState(false);
   const [recentTags, setRecentTags] = useState<string[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const isPopup = searchParams.has("url");
+  const isPopup = !!initialUrl;
 
   useEffect(() => {
     // Fetch recent tags for pills
@@ -64,6 +73,7 @@ function AddForm() {
       return;
     }
     setLoadingSuggestions(true);
+    setSuggestionsLoaded(false);
     try {
       const res = await fetch(
         `/api/suggest-tags?url=${encodeURIComponent(linkUrl)}`,
@@ -76,6 +86,7 @@ function AddForm() {
       // Silently fail — suggestions are optional
     } finally {
       setLoadingSuggestions(false);
+      setSuggestionsLoaded(true);
     }
   }
 
@@ -228,10 +239,11 @@ function AddForm() {
             </div>
           )}
 
-        {recentTags.length > 0 && (
+        {/* Hide recent tags while suggestions are loading to prevent flash */}
+        {(suggestionsLoaded || !url) && recentTags.length > 0 && (
           <div className="recent-tags">
             {recentTags
-              .filter((t) => !tags.includes(t))
+              .filter((t) => !tags.includes(t) && !suggestedTags.includes(t))
               .slice(0, 10)
               .map((t) => (
                 <button

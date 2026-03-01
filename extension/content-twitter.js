@@ -39,6 +39,11 @@
   function handleBookmarkClick(btn) {
     if (!config?.token) return;
 
+    // We only capture clicks on [data-testid="bookmark"] (unbookmarked state).
+    // After the 500ms delay, Twitter changes data-testid to "removeBookmark"
+    // to confirm the bookmark was added. If it didn't change, the bookmark failed.
+    if (btn.getAttribute("data-testid") !== "removeBookmark") return;
+
     // Find the parent tweet article
     const article = btn.closest("article");
     if (!article) return;
@@ -46,13 +51,6 @@
     // Extract tweet data from the DOM
     const tweetData = extractTweetData(article);
     if (!tweetData?.url) return;
-
-    // Check if the button toggled ON (bookmarked) vs OFF (unbookmarked)
-    // After clicking, if the bookmark icon is filled, it was just bookmarked
-    const svg = btn.querySelector("svg");
-    const isFilled = svg?.querySelector('[d*="M18.7"]') || btn.getAttribute("aria-label")?.includes("Remove");
-    // If unbookmarking, skip
-    if (!isFilled && btn.getAttribute("data-testid") === "removeBookmark") return;
 
     saveTweetToMarks(tweetData);
   }

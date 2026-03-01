@@ -18,6 +18,7 @@ const STOP_WORDS = new Set([
   "own", "same", "tell", "need", "home", "big", "high", "long",
   "page", "site", "web", "blog", "post", "article", "read", "click",
   "share", "follow", "sign", "free", "view", "index", "main", "amp",
+  "los", "las", "san", "del", "mod", "ref", "pos", "utm",
 ]);
 
 /** Check if a keyword is a stop word (handles multi-word meta keywords) */
@@ -132,13 +133,34 @@ export function addUrlKeywords(url: string, candidates: Map<string, number>) {
       }
     }
 
-    const pathParts = parsed.pathname
-      .split(/[/\-_.]/)
+    // Split path into segments by /
+    const segments = parsed.pathname
+      .split("/")
       .map((s) => s.toLowerCase().trim())
-      .filter((s) => s.length > 2 && !STOP_WORDS.has(s) && !/^\d+$/.test(s));
+      .filter((s) => s.length > 0 && !/^[a-f0-9]{8,}$/.test(s)); // skip hashes/IDs
 
-    for (const part of pathParts) {
-      candidates.set(part, (candidates.get(part) ?? 0) + 2);
+    for (const segment of segments) {
+      // Keep short hyphenated segments as multi-word phrases (e.g., "real-estate" → "real estate")
+      if (segment.includes("-")) {
+        const parts = segment.split("-").filter((w) => w.length > 0 && !/^\d+$/.test(w) && !/^[a-f0-9]{6,}$/.test(w));
+        // Only create phrases from 2-3 word segments (natural tag length)
+        if (parts.length >= 2 && parts.length <= 3) {
+          const phrase = parts.join(" ");
+          if (phrase.length > 2 && !isStopWord(phrase)) {
+            candidates.set(phrase, (candidates.get(phrase) ?? 0) + 4);
+          }
+        }
+      }
+
+      // Also add individual words from each segment
+      const words = segment
+        .split(/[-_.]/)
+        .map((w) => w.trim())
+        .filter((w) => w.length > 2 && !STOP_WORDS.has(w) && !/^\d+$/.test(w) && !/^[a-f0-9]{6,}$/.test(w));
+
+      for (const word of words) {
+        candidates.set(word, (candidates.get(word) ?? 0) + 2);
+      }
     }
   } catch {
     // Invalid URL, skip

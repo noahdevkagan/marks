@@ -1,4 +1,6 @@
 const API_URL = "https://marks-drab.vercel.app";
+const SUPABASE_URL = "https://pwrrtbvaynlsxckazczx.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3cnJ0YnZheW5sc3hja2F6Y3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMzAxMTMsImV4cCI6MjA4NzcwNjExM30.lOOTgbwoUW6-5XSQC_kJn3K_iO-1m565jQ4FXQR3LiA";
 
 const loginView = document.getElementById("login-view");
 const saveView = document.getElementById("save-view");
@@ -39,18 +41,12 @@ loginForm.addEventListener("submit", async (e) => {
   const password = document.getElementById("password").value;
 
   try {
-    // Discover Supabase config from the app's page source
-    const supabaseUrl = await discoverSupabaseUrl(API_URL);
-    if (!supabaseUrl) {
-      throw new Error("Could not connect to Marks.");
-    }
-
     // Sign in via Supabase REST API
-    const res = await fetch(`${supabaseUrl.url}/auth/v1/token?grant_type=password`, {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: supabaseUrl.key,
+        apikey: SUPABASE_KEY,
       },
       body: JSON.stringify({ email, password }),
     });
@@ -64,8 +60,8 @@ loginForm.addEventListener("submit", async (e) => {
     await chrome.storage.local.set({
       token: data.access_token,
       refreshToken: data.refresh_token,
-      supabaseUrl: supabaseUrl.url,
-      supabaseKey: supabaseUrl.key,
+      supabaseUrl: SUPABASE_URL,
+      supabaseKey: SUPABASE_KEY,
     });
 
     config = await chrome.storage.local.get([
@@ -80,34 +76,6 @@ loginForm.addEventListener("submit", async (e) => {
     btn.textContent = "Sign in";
   }
 });
-
-async function discoverSupabaseUrl(appUrl) {
-  try {
-    // Fetch the app's HTML and look for Supabase env vars in the JS bundles
-    const res = await fetch(appUrl);
-    const html = await res.text();
-
-    // Next.js inlines NEXT_PUBLIC_ vars — look for the Supabase URL pattern
-    const urlMatch = html.match(/NEXT_PUBLIC_SUPABASE_URL['":\s]*['"](https:\/\/[^'"]+)['"]/);
-    const keyMatch = html.match(/NEXT_PUBLIC_SUPABASE_ANON_KEY['":\s]*['"]([^'"]+)['"]/);
-
-    if (urlMatch && keyMatch) {
-      return { url: urlMatch[1], key: keyMatch[1] };
-    }
-
-    // Fallback: try common Supabase URL patterns in the HTML
-    const sbUrlMatch = html.match(/(https:\/\/[a-z0-9]+\.supabase\.co)/);
-    const sbKeyMatch = html.match(/eyJ[A-Za-z0-9_-]{100,}/);
-
-    if (sbUrlMatch && sbKeyMatch) {
-      return { url: sbUrlMatch[1], key: sbKeyMatch[0] };
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 // --- Save ---
 

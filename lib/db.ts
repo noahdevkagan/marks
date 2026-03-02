@@ -178,7 +178,7 @@ async function getOrCreateTag(name: string): Promise<number> {
   return created!.id;
 }
 
-async function setBookmarkTags(bookmarkId: number, tagNames: string[]) {
+export async function setBookmarkTags(bookmarkId: number, tagNames: string[]) {
   const supabase = await createClient();
 
   await supabase.from("bookmark_tags").delete().eq("bookmark_id", bookmarkId);

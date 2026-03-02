@@ -30,6 +30,21 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
     });
 
+    // Auto-enrich Twitter bookmarks in background (fire-and-forget)
+    const isTwitter =
+      body.url?.includes("x.com/") || body.url?.includes("twitter.com/");
+    if (isTwitter) {
+      const appUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "https://marks-drab.vercel.app";
+      fetch(`${appUrl}/api/bookmarks/${bookmark.id}/enrich`, {
+        method: "POST",
+        headers: {
+          Authorization: req.headers.get("authorization") || "",
+          "Content-Type": "application/json",
+        },
+      }).catch(() => {}); // fire-and-forget
+    }
+
     return NextResponse.json(bookmark, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

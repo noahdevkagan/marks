@@ -8,12 +8,14 @@
     "build": "next build",
     "start": "next start",
     "import": "tsx scripts/import-pinboard.ts",
-    "import:twitter": "tsx scripts/import-twitter.ts"
+    "import:twitter": "tsx scripts/import-twitter.ts",
+    "ext:dev": "web-ext run -s extension/ -t chromium --chromium-binary '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@mozilla/readability": "^0.6.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
@@ -28,6 +30,7 @@
     "@types/node": "^25.3.2",
     "@types/react": "^19.2.14",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "web-ext": "^9.3.0"
   }
 }

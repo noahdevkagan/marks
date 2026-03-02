@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getBookmark } from "@/lib/db";
 import { createClient } from "@/lib/supabase-server";
 import { ArchiveActions } from "./archive-actions";
+import { EnrichActions } from "./enrich-actions";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -13,13 +14,12 @@ export default async function ReaderPage({ params }: Props) {
   const bookmark = await getBookmark(id);
   if (!bookmark) notFound();
 
-  // Fetch archived content
+  // Fetch archived content and enrichment data
   const supabase = await createClient();
-  const { data: archived } = await supabase
-    .from("archived_content")
-    .select("*")
-    .eq("bookmark_id", id)
-    .single();
+  const [{ data: archived }, { data: enrichment }] = await Promise.all([
+    supabase.from("archived_content").select("*").eq("bookmark_id", id).single(),
+    supabase.from("bookmark_enrichments").select("*").eq("bookmark_id", id).single(),
+  ]);
 
   return (
     <div className="reader-container">
@@ -34,6 +34,9 @@ export default async function ReaderPage({ params }: Props) {
             isArchived={!!archived}
             source={archived?.source}
           />
+          {!enrichment && (
+            <EnrichActions bookmarkId={id} enrichment={null} />
+          )}
         </div>
       </nav>
 
@@ -79,6 +82,10 @@ export default async function ReaderPage({ params }: Props) {
           </div>
         )}
       </article>
+
+      {enrichment && (
+        <EnrichActions bookmarkId={id} enrichment={enrichment} />
+      )}
 
       {bookmark.tags.length > 0 && (
         <div className="reader-tags">

@@ -79,6 +79,21 @@ async function tryArchivePh(
   }
 }
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function parseWithReadability(
   html: string,
   url: string,
@@ -95,16 +110,17 @@ function parseWithReadability(
     const reader = new Readability(document as unknown as Document);
     const article = reader.parse();
 
-    if (!article) return null;
+    if (!article || !article.content) return null;
 
-    const textContent = (article.textContent ?? "").trim();
+    // linkedom's textContent is unreliable, so derive text from HTML
+    const textContent = stripHtml(article.content);
 
     return {
-      content_html: article.content ?? "",
+      content_html: article.content,
       content_text: textContent,
       excerpt: article.excerpt ?? textContent.slice(0, 280),
       byline: article.byline ?? "",
-      word_count: textContent.split(/\s+/).length,
+      word_count: textContent.split(/\s+/).filter(Boolean).length,
     };
   } catch {
     return null;
@@ -144,6 +160,16 @@ export async function extractMetadata(url: string): Promise<PageMetadata> {
   } catch {
     return { title: "", description: "", keywords: "" };
   }
+}
+
+// Parse pre-fetched HTML (e.g. from Chrome extension capturing the page)
+export function extractFromHtml(
+  html: string,
+  url: string,
+): ExtractedArticle | null {
+  const result = parseWithReadability(html, url);
+  if (!result || result.content_text.length < MIN_CONTENT_LENGTH) return null;
+  return { ...result, source: "readability" };
 }
 
 // For manual "try archive.ph" button — forces archive.ph regardless

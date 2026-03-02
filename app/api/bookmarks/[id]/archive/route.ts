@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { getBookmark, updateBookmark } from "@/lib/db";
-import { extractArticle, extractViaArchive } from "@/lib/extract";
+import {
+  extractArticle,
+  extractViaArchive,
+  extractFromHtml,
+} from "@/lib/extract";
 import { createClient } from "@/lib/supabase-server";
+
+export const maxDuration = 60;
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -17,13 +23,22 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Check if caller wants to force archive.ph
     const body = await req.json().catch(() => ({}));
     const forceArchive = body.force_archive === true;
+    const pageHtml = body.page_html as string | undefined;
 
-    const article = forceArchive
-      ? await extractViaArchive(bookmark.url)
-      : await extractArticle(bookmark.url);
+    // If pre-fetched HTML provided (e.g. from Chrome extension), parse it directly
+    // Otherwise fall back to server-side fetch
+    let article;
+    if (pageHtml && pageHtml.length > 500) {
+      article = extractFromHtml(pageHtml, bookmark.url);
+    }
+
+    if (!article) {
+      article = forceArchive
+        ? await extractViaArchive(bookmark.url)
+        : await extractArticle(bookmark.url);
+    }
 
     if (!article) {
       return NextResponse.json(

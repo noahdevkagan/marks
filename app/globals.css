@@ -708,6 +708,11 @@ header nav .nav-add {
   font-style: italic;
 }
 
+.archive-error {
+  font-size: 0.75rem;
+  color: #c0392b;
+}
+
 .reader-header {
   margin-bottom: 2rem;
 }

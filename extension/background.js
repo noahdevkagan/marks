@@ -123,9 +123,39 @@ async function saveBookmark(data) {
 
     if (!res.ok) return { ok: false, error: "Save failed" };
     const bookmark = await res.json();
+
+    // Fire-and-forget: capture page HTML and archive it
+    captureAndArchive(bookmark.id, token).catch(() => {});
+
     return { ok: true, bookmark };
   } catch (err) {
     return { ok: false, error: err.message };
+  }
+}
+
+async function captureAndArchive(bookmarkId, token) {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => document.documentElement.outerHTML,
+    });
+
+    const html = results?.[0]?.result;
+    if (!html || html.length < 500) return;
+
+    await fetch(`${API_URL}/api/bookmarks/${bookmarkId}/archive`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ page_html: html }),
+    });
+  } catch (e) {
+    console.log("[Marks] captureAndArchive error:", e);
   }
 }
 

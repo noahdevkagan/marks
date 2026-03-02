@@ -15,23 +15,33 @@ export function ArchiveActions({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
 
   async function archive(forceArchive = false) {
     setLoading(true);
-    setStatus(forceArchive ? "Fetching via archive.ph..." : "Extracting...");
+    setError("");
+    setStatus(forceArchive ? "Fetching via archive.ph…" : "Extracting…");
 
-    const res = await fetch(`/api/bookmarks/${bookmarkId}/archive`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ force_archive: forceArchive }),
-    });
+    try {
+      const res = await fetch(`/api/bookmarks/${bookmarkId}/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force_archive: forceArchive }),
+      });
 
-    if (res.ok) {
+      if (res.ok) {
+        setStatus("");
+        setLoading(false);
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Failed to extract");
+        setStatus("");
+        setLoading(false);
+      }
+    } catch {
+      setError("Network error");
       setStatus("");
-      router.refresh();
-    } else {
-      const data = await res.json();
-      setStatus(data.error ?? "Failed");
       setLoading(false);
     }
   }
@@ -42,6 +52,7 @@ export function ArchiveActions({
 
   return (
     <>
+      {error && <span className="archive-error">{error}</span>}
       {!isArchived && (
         <button className="reader-action-btn" onClick={() => archive(false)}>
           archive

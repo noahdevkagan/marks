@@ -1,5 +1,5 @@
 import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
+import { parseHTML } from "linkedom";
 
 export type ExtractedArticle = {
   content_html: string;
@@ -84,8 +84,15 @@ function parseWithReadability(
   url: string,
 ): Omit<ExtractedArticle, "source"> | null {
   try {
-    const dom = new JSDOM(html, { url });
-    const reader = new Readability(dom.window.document);
+    const { document } = parseHTML(html);
+
+    // Set documentURI for Readability (it uses this for relative URL resolution)
+    Object.defineProperty(document, "documentURI", {
+      value: url,
+      writable: false,
+    });
+
+    const reader = new Readability(document as unknown as Document);
     const article = reader.parse();
 
     if (!article) return null;
@@ -121,8 +128,7 @@ export async function extractMetadata(url: string): Promise<PageMetadata> {
     if (!res.ok) return { title: "", description: "", keywords: "" };
 
     const html = await res.text();
-    const dom = new JSDOM(html, { url });
-    const doc = dom.window.document;
+    const { document: doc } = parseHTML(html);
 
     const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute("content");
     const titleEl = doc.querySelector("title")?.textContent;

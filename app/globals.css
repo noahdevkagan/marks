@@ -644,19 +644,14 @@ header nav .nav-add {
 }
 
 /* Read link in bookmark meta — subtle like delete */
-.read-link {
-  font-size: 0.6875rem;
-  color: transparent;
+.hostname-link {
+  color: var(--text-faint);
+  text-decoration: none;
   transition: color 0.15s;
 }
 
-.bookmark-item:hover .read-link {
-  color: var(--text-faint);
-}
-
-.read-link:hover {
-  color: var(--accent) !important;
-  text-decoration: none;
+.hostname-link:hover {
+  color: var(--accent);
 }
 
 /* Read later count */
@@ -1102,10 +1097,6 @@ header nav .nav-add {
 
   /* On mobile, show delete/read/edit buttons always (no hover) */
   .delete-btn {
-    color: var(--text-faint);
-  }
-
-  .read-link {
     color: var(--text-faint);
   }
 

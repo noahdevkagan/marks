@@ -20,13 +20,12 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
     "dotenv": "^17.3.1",
-    "jsdom": "^28.1.0",
+    "linkedom": "^0.18.12",
     "next": "^16.1.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@types/jsdom": "^28.0.0",
     "@types/node": "^25.3.2",
     "@types/react": "^19.2.14",
     "tsx": "^4.21.0",

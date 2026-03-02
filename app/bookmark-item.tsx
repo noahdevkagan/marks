@@ -168,15 +168,23 @@ export function BookmarkItem({
           loading="lazy"
         />
         <div className="bookmark-content">
-          <a
-            href={bookmark.url}
+          <Link
+            href={`/reader/${bookmark.id}`}
             className="bookmark-title"
-            target="_blank"
-            rel="noopener noreferrer"
           >
             {bookmark.title || bookmark.url}
-          </a>
-          <span className="bookmark-url">{hostname}</span>
+          </Link>
+          <span className="bookmark-url">
+            <a
+              href={bookmark.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hostname-link"
+              title="Open original"
+            >
+              {hostname} ↗
+            </a>
+          </span>
           <div className="bookmark-meta">
             <span className="date">
               {new Date(bookmark.created_at).toLocaleDateString("en-US", {
@@ -202,9 +210,6 @@ export function BookmarkItem({
                 ))}
               </div>
             )}
-            <Link href={`/reader/${bookmark.id}`} className="read-link">
-              read
-            </Link>
             <button className="edit-btn" onClick={startEdit} title="Edit">
               edit
             </button>

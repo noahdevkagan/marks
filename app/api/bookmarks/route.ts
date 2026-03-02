@@ -30,19 +30,31 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
     });
 
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://marks-drab.vercel.app";
+    const authHeader = req.headers.get("authorization") || "";
+
+    // Auto-archive article content in background (fire-and-forget)
+    fetch(`${appUrl}/api/bookmarks/${bookmark.id}/archive`, {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ force_archive: false }),
+    }).catch(() => {});
+
     // Auto-enrich Twitter bookmarks in background (fire-and-forget)
     const isTwitter =
       body.url?.includes("x.com/") || body.url?.includes("twitter.com/");
     if (isTwitter) {
-      const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL || "https://marks-drab.vercel.app";
       fetch(`${appUrl}/api/bookmarks/${bookmark.id}/enrich`, {
         method: "POST",
         headers: {
-          Authorization: req.headers.get("authorization") || "",
+          Authorization: authHeader,
           "Content-Type": "application/json",
         },
-      }).catch(() => {}); // fire-and-forget
+      }).catch(() => {});
     }
 
     return NextResponse.json(bookmark, { status: 201 });

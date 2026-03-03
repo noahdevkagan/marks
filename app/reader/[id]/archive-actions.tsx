@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const window: Window & { __marks_extension?: boolean };
+
 export function ArchiveActions({
   bookmarkId,
   bookmarkUrl,
@@ -19,35 +22,24 @@ export function ArchiveActions({
   const [status, setStatus] = useState(!isArchived ? "Extracting…" : "");
   const [error, setError] = useState("");
   const autoTriggered = useRef(false);
-  const hasExtension = useRef(false);
 
   useEffect(() => {
-    // Check if extension already signaled before React mounted
-    if ((window as unknown as { __marks_extension?: boolean }).__marks_extension) {
-      hasExtension.current = true;
-    }
-
-    function onMessage(event: MessageEvent) {
-      if (event.data?.type === "marks:extension-ready") {
-        hasExtension.current = true;
-      }
-    }
-    window.addEventListener("message", onMessage);
-
     if (!isArchived && !autoTriggered.current) {
       autoTriggered.current = true;
       archive(false);
     }
-
-    return () => window.removeEventListener("message", onMessage);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** Check if extension is present right now via injected window property */
+  function hasExtension(): boolean {
+    return window.__marks_extension === true;
+  }
+
+  /** Ask extension to fetch URL via archive.ph background tab */
   async function fetchViaExtension(): Promise<{
     ok: boolean;
     error?: string;
   }> {
-    if (!hasExtension.current) return { ok: false, error: "Extension not found" };
-
     return new Promise((resolve) => {
       const timeout = setTimeout(
         () => resolve({ ok: false, error: "Timed out fetching from archive.ph" }),
@@ -78,9 +70,8 @@ export function ArchiveActions({
     setError("");
 
     try {
-      // "try web archive" with extension present → go straight to extension
-      // Server-side archive.ph always gets CAPTCHA'd, so skip it
-      if (forceArchive && hasExtension.current) {
+      // "try web archive" with extension → go straight to extension
+      if (forceArchive && hasExtension()) {
         setStatus("Fetching via archive.ph…");
         const result = await fetchViaExtension();
         if (result.ok) {
@@ -110,8 +101,8 @@ export function ArchiveActions({
         return;
       }
 
-      // Server-side failed — try via extension (opens archive.ph in background tab)
-      if (hasExtension.current) {
+      // Server-side failed — try via extension
+      if (hasExtension()) {
         setStatus("Fetching via archive.ph…");
         const result = await fetchViaExtension();
         if (result.ok) {

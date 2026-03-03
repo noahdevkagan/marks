@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function ArchiveActions({
   bookmarkId,
@@ -13,14 +13,22 @@ export function ArchiveActions({
   source?: string;
 }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(!isArchived);
+  const [status, setStatus] = useState(!isArchived ? "Extracting…" : "");
   const [error, setError] = useState("");
+  const autoTriggered = useRef(false);
+
+  useEffect(() => {
+    if (!isArchived && !autoTriggered.current) {
+      autoTriggered.current = true;
+      archive(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function archive(forceArchive = false) {
     setLoading(true);
     setError("");
-    setStatus(forceArchive ? "Fetching via archive.ph…" : "Extracting…");
+    setStatus(forceArchive ? "Trying web archives…" : "Extracting…");
 
     try {
       const res = await fetch(`/api/bookmarks/${bookmarkId}/archive`, {
@@ -58,9 +66,9 @@ export function ArchiveActions({
           archive
         </button>
       )}
-      {isArchived && source !== "archive.ph" && (
+      {isArchived && source === "readability" && (
         <button className="reader-action-btn" onClick={() => archive(true)}>
-          try archive.ph
+          try web archive
         </button>
       )}
       {isArchived && (

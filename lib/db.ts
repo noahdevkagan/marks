@@ -202,31 +202,25 @@ async function attachTags(bookmarks: Bookmark[]): Promise<BookmarkWithTags[]> {
   const supabase = await createClient();
   const ids = bookmarks.map((b) => b.id);
 
-  const { data: junctions } = await supabase
+  const { data } = await supabase
     .from("bookmark_tags")
-    .select("bookmark_id, tag_id")
+    .select("bookmark_id, tags(name)")
     .in("bookmark_id", ids);
 
-  if (!junctions || junctions.length === 0) {
+  if (!data || data.length === 0) {
     return bookmarks.map((b) => ({ ...b, tags: [] }));
   }
 
-  const tagIds = [...new Set(junctions.map((j) => j.tag_id))];
-
-  const { data: tags } = await supabase
-    .from("tags")
-    .select("id, name")
-    .in("id", tagIds);
-
-  const tagMap = new Map(tags?.map((t) => [t.id, t.name]) ?? []);
-
   const bookmarkTagMap = new Map<number, string[]>();
-  for (const j of junctions) {
-    const name = tagMap.get(j.tag_id);
+  for (const row of data as unknown as {
+    bookmark_id: number;
+    tags: { name: string };
+  }[]) {
+    const name = row.tags?.name;
     if (!name) continue;
-    const arr = bookmarkTagMap.get(j.bookmark_id) ?? [];
+    const arr = bookmarkTagMap.get(row.bookmark_id) ?? [];
     arr.push(name);
-    bookmarkTagMap.set(j.bookmark_id, arr);
+    bookmarkTagMap.set(row.bookmark_id, arr);
   }
 
   return bookmarks.map((b) => ({
@@ -238,35 +232,12 @@ async function attachTags(bookmarks: Bookmark[]): Promise<BookmarkWithTags[]> {
 export async function getAllTags(): Promise<{ name: string; count: number }[]> {
   const supabase = await createClient();
 
-  // Fetch all bookmark_tags rows (default limit is 1000, so paginate)
-  const allRows: { tag_id: number; tags: { name: string } }[] = [];
-  const PAGE = 1000;
-  let offset = 0;
+  const { data } = await supabase.rpc("get_tag_counts");
 
-  while (true) {
-    const { data } = await supabase
-      .from("bookmark_tags")
-      .select("tag_id, tags(name)")
-      .range(offset, offset + PAGE - 1);
+  if (!data) return [];
 
-    if (!data || data.length === 0) break;
-
-    allRows.push(
-      ...(data as unknown as { tag_id: number; tags: { name: string } }[]),
-    );
-
-    if (data.length < PAGE) break;
-    offset += PAGE;
-  }
-
-  const counts = new Map<string, number>();
-  for (const row of allRows) {
-    const name = row.tags?.name;
-    if (!name) continue;
-    counts.set(name, (counts.get(name) ?? 0) + 1);
-  }
-
-  return Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
+  return (data as { name: string; count: number }[]).map((row) => ({
+    name: row.name,
+    count: Number(row.count),
+  }));
 }

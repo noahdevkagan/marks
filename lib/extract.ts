@@ -7,7 +7,7 @@ export type ExtractedArticle = {
   excerpt: string;
   byline: string;
   word_count: number;
-  source: "readability" | "archive.ph";
+  source: "readability" | "archive.ph" | "wayback";
 };
 
 const MIN_CONTENT_LENGTH = 200;
@@ -33,6 +33,13 @@ export async function extractArticle(
 
   if (archived && archived.content_text.length >= MIN_CONTENT_LENGTH) {
     return { ...archived, source: "archive.ph" };
+  }
+
+  // Step 3: fall back to Wayback Machine
+  const wayback = await tryWaybackMachine(url);
+
+  if (wayback && wayback.content_text.length >= MIN_CONTENT_LENGTH) {
+    return { ...wayback, source: "wayback" };
   }
 
   // Return whatever we got (direct may have partial content), or null
@@ -63,8 +70,30 @@ async function tryArchivePh(
 ): Promise<Omit<ExtractedArticle, "source"> | null> {
   try {
     // archive.ph/newest/<url> redirects to the most recent snapshot
+    // Short timeout — archive.ph usually returns CAPTCHA (429) for server-side requests
     const archiveUrl = `https://archive.ph/newest/${encodeURI(url)}`;
     const res = await fetch(archiveUrl, {
+      headers: FETCH_HEADERS,
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!res.ok) return null;
+
+    const html = await res.text();
+    return parseWithReadability(html, url);
+  } catch {
+    return null;
+  }
+}
+
+async function tryWaybackMachine(
+  url: string,
+): Promise<Omit<ExtractedArticle, "source"> | null> {
+  try {
+    // web.archive.org/web/2/<url> redirects to the most recent snapshot
+    const waybackUrl = `https://web.archive.org/web/2/${encodeURI(url)}`;
+    const res = await fetch(waybackUrl, {
       headers: FETCH_HEADERS,
       redirect: "follow",
       signal: AbortSignal.timeout(20000),
@@ -72,7 +101,14 @@ async function tryArchivePh(
 
     if (!res.ok) return null;
 
-    const html = await res.text();
+    let html = await res.text();
+
+    // Strip Wayback Machine's injected toolbar
+    html = html.replace(
+      /<!-- BEGIN WAYBACK TOOLBAR INSERT -->[\s\S]*?<!-- END WAYBACK TOOLBAR INSERT -->/,
+      "",
+    );
+
     return parseWithReadability(html, url);
   } catch {
     return null;
@@ -172,11 +208,19 @@ export function extractFromHtml(
   return { ...result, source: "readability" };
 }
 
-// For manual "try archive.ph" button — forces archive.ph regardless
+// For manual "try archive" button — tries archive.ph, then Wayback Machine
 export async function extractViaArchive(
   url: string,
 ): Promise<ExtractedArticle | null> {
-  const result = await tryArchivePh(url);
-  if (!result) return null;
-  return { ...result, source: "archive.ph" };
+  const archiveResult = await tryArchivePh(url);
+  if (archiveResult && archiveResult.content_text.length >= MIN_CONTENT_LENGTH) {
+    return { ...archiveResult, source: "archive.ph" };
+  }
+
+  const waybackResult = await tryWaybackMachine(url);
+  if (waybackResult && waybackResult.content_text.length >= MIN_CONTENT_LENGTH) {
+    return { ...waybackResult, source: "wayback" };
+  }
+
+  return null;
 }

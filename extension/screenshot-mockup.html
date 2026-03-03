@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Marks Extension Screenshot</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    .browser-frame {
+      background: #e8e8e8;
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+      overflow: hidden;
+      width: 1280px;
+      height: 800px;
+      position: relative;
+    }
+
+    .browser-toolbar {
+      background: #dee1e6;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.red { background: #ff5f57; }
+    .dot.yellow { background: #febc2e; }
+    .dot.green { background: #28c840; }
+
+    .url-bar {
+      flex: 1;
+      margin-left: 12px;
+      background: white;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      color: #333;
+    }
+
+    .page-content {
+      background: white;
+      height: calc(100% - 40px);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 60px;
+      position: relative;
+    }
+
+    .page-bg {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      padding: 80px 120px;
+    }
+
+    .page-bg h1 {
+      font-size: 28px;
+      color: #1a1a1a;
+      margin-bottom: 16px;
+    }
+
+    .page-bg .line {
+      height: 12px;
+      background: #e5e5e5;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+
+    .page-bg .line.w80 { width: 80%; }
+    .page-bg .line.w60 { width: 60%; }
+    .page-bg .line.w90 { width: 90%; }
+    .page-bg .line.w70 { width: 70%; }
+    .page-bg .line.w50 { width: 50%; }
+
+    /* Extension popup */
+    .popup-overlay {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      z-index: 10;
+    }
+
+    .popup {
+      width: 340px;
+      background: #fafafa;
+      border-radius: 8px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+      padding: 16px;
+      font-size: 13px;
+      color: #1a1a1a;
+      line-height: 1.5;
+    }
+
+    .popup h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .popup label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 2px;
+      margin-top: 8px;
+    }
+
+    .popup label:first-of-type {
+      margin-top: 0;
+    }
+
+    .popup input[type="url"],
+    .popup input[type="text"],
+    .popup textarea {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #e5e5e5;
+      border-radius: 4px;
+      font-size: 13px;
+      background: white;
+      color: #1a1a1a;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+
+    .popup textarea { resize: none; }
+
+    .tag-input-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px 6px;
+      border: 1px solid #e5e5e5;
+      border-radius: 4px;
+      background: white;
+      min-height: 30px;
+      align-items: center;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 1px 6px;
+      background: #f0f0f0;
+      color: #555;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+
+    .suggested-tags {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .suggested-tags .label-text {
+      font-size: 10px;
+      color: #999;
+    }
+
+    .suggested-tag {
+      display: inline-block;
+      padding: 1px 6px;
+      border: 1px dashed #0066cc;
+      background: transparent;
+      color: #0066cc;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+
+    .checkbox-label {
+      display: flex !important;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px !important;
+      margin-top: 8px;
+    }
+
+    .popup .save-btn {
+      width: 100%;
+      padding: 8px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      margin-top: 10px;
+    }
+
+    .tag-input-placeholder {
+      color: #999;
+      font-size: 12px;
+    }
+
+    /* Arrow pointing to extension icon area */
+    .popup-arrow {
+      position: absolute;
+      top: -8px;
+      right: 24px;
+      width: 16px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .popup-arrow::before {
+      content: '';
+      position: absolute;
+      top: 4px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      background: #fafafa;
+      transform: rotate(45deg);
+      box-shadow: 0 0 4px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="browser-frame">
+    <div class="browser-toolbar">
+      <div class="dot red"></div>
+      <div class="dot yellow"></div>
+      <div class="dot green"></div>
+      <div class="url-bar">https://getmarks.sh/bookmarks</div>
+    </div>
+    <div class="page-content">
+      <div class="page-bg">
+        <h1>10 Tips for Better Web Development</h1>
+        <div class="line w90"></div>
+        <div class="line w80"></div>
+        <div class="line w60"></div>
+        <br>
+        <div class="line w90"></div>
+        <div class="line w70"></div>
+        <div class="line w80"></div>
+        <div class="line w50"></div>
+        <br>
+        <div class="line w80"></div>
+        <div class="line w90"></div>
+        <div class="line w60"></div>
+      </div>
+      <div class="popup-overlay">
+        <div class="popup">
+          <div class="popup-arrow"></div>
+          <h2>Save to Marks</h2>
+          <label>URL</label>
+          <input type="url" value="https://getmarks.sh/bookmarks" readonly>
+          <label>Title</label>
+          <input type="text" value="10 Tips for Better Web Development" readonly>
+          <label>Notes</label>
+          <textarea rows="2" placeholder="Optional notes..."></textarea>
+          <label>Tags</label>
+          <div class="tag-input-wrap">
+            <span class="tag">webdev ×</span>
+            <span class="tag">frontend ×</span>
+            <span class="tag-input-placeholder">Add tags...</span>
+          </div>
+          <div class="suggested-tags">
+            <span class="label-text">Suggested:</span>
+            <span class="suggested-tag">+ javascript</span>
+            <span class="suggested-tag">+ react</span>
+            <span class="suggested-tag">+ tutorial</span>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox"> Read later
+          </label>
+          <button class="save-btn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

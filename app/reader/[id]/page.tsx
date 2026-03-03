@@ -58,10 +58,12 @@ export default async function ReaderPage({ params }: Props) {
                 </span>
               </>
             )}
-            {archived?.source === "archive.ph" && (
+            {archived?.source && archived.source !== "readability" && (
               <>
                 <span>&middot;</span>
-                <span className="reader-source">via archive.ph</span>
+                <span className="reader-source">
+                  via {archived.source === "wayback" ? "wayback machine" : "archive.ph"}
+                </span>
               </>
             )}
           </div>

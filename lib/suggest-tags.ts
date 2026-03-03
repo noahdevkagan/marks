@@ -19,6 +19,8 @@ const STOP_WORDS = new Set([
   "page", "site", "web", "blog", "post", "article", "read", "click",
   "share", "follow", "sign", "free", "view", "index", "main", "amp",
   "los", "las", "san", "del", "mod", "ref", "pos", "utm",
+  "content", "subscribe", "login", "register", "account", "premium",
+  "newsletter", "cookie", "cookies", "privacy", "terms", "policy",
 ]);
 
 /** Check if a keyword is a stop word (handles multi-word meta keywords) */
@@ -87,8 +89,12 @@ export async function suggestTags(
     }
   }
 
+  // Filter out low-confidence candidates (score <= 2 means only URL-fragment match)
+  const MIN_SCORE = 3;
+
   // Sort by score and return top results
   const sorted = [...candidates.entries()]
+    .filter(([, score]) => score >= MIN_SCORE)
     .sort((a, b) => b[1] - a[1])
     .map(([tag]) => tag);
 
@@ -162,7 +168,12 @@ export function addUrlKeywords(url: string, candidates: Map<string, number>) {
     const segments = parsed.pathname
       .split("/")
       .map((s) => s.toLowerCase().trim())
-      .filter((s) => s.length > 0 && !/^[a-f0-9]{8,}$/.test(s)); // skip hashes/IDs
+      .filter(
+        (s) =>
+          s.length > 0 &&
+          !/^[a-f0-9]{8,}$/.test(s) && // skip hex hashes
+          !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(s), // skip UUIDs
+      );
 
     for (const segment of segments) {
       // Keep short hyphenated segments as multi-word phrases (e.g., "real-estate" → "real estate")

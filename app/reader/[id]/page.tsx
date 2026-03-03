@@ -31,6 +31,7 @@ export default async function ReaderPage({ params }: Props) {
           </a>
           <ArchiveActions
             bookmarkId={id}
+            bookmarkUrl={bookmark.url}
             isArchived={!!archived}
             source={archived?.source}
           />

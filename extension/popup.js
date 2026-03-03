@@ -86,7 +86,25 @@ async function showSaveView() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
     document.getElementById("url").value = tab.url || "";
-    document.getElementById("title").value = tab.title || "";
+
+    // Try og:title first (better for paywalled pages), fall back to tab.title
+    let title = tab.title || "";
+    if (tab.id) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const og = document.querySelector('meta[property="og:title"]');
+            return og?.getAttribute("content") || "";
+          },
+        });
+        const ogTitle = results?.[0]?.result;
+        if (ogTitle && ogTitle.length > 3) title = ogTitle;
+      } catch {
+        // scripting may fail on chrome:// pages etc — use tab.title
+      }
+    }
+    document.getElementById("title").value = title;
   }
 
   // Fetch suggested tags

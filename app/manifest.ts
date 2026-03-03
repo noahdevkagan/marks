@@ -5,6 +5,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Marks",
     short_name: "Marks",
     description: "Private bookmark tracker",
+    id: "/",
+    scope: "/",
     start_url: "/",
     display: "standalone",
     background_color: "#fafafa",

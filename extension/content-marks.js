@@ -29,4 +29,6 @@ window.addEventListener("message", async (event) => {
 });
 
 // Signal to the page that the extension is available
+// Set a property React can check synchronously (postMessage may fire before React mounts)
+window.__marks_extension = true;
 window.postMessage({ type: "marks:extension-ready" });

@@ -22,6 +22,11 @@ export function ArchiveActions({
   const hasExtension = useRef(false);
 
   useEffect(() => {
+    // Check if extension already signaled before React mounted
+    if ((window as unknown as { __marks_extension?: boolean }).__marks_extension) {
+      hasExtension.current = true;
+    }
+
     function onMessage(event: MessageEvent) {
       if (event.data?.type === "marks:extension-ready") {
         hasExtension.current = true;

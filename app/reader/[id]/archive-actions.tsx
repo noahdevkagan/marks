@@ -23,73 +23,51 @@ export function ArchiveActions({
   const [error, setError] = useState("");
   const autoTriggered = useRef(false);
 
+  // Listen for archive capture completion from extension
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.data?.type !== "marks:archive-done") return;
+      setLoading(false);
+      setStatus("");
+      if (event.data.ok) {
+        router.refresh();
+      } else {
+        setError(event.data.error ?? "Could not capture from archive.today");
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [router]);
+
   useEffect(() => {
     if (!isArchived && !autoTriggered.current) {
       autoTriggered.current = true;
-      archive(false);
+      archive();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function hasExtension(): boolean {
-    return window.__marks_extension === true;
-  }
-
-  /** Wait for the extension to signal archive capture is done */
-  function waitForArchiveDone(): Promise<{ ok: boolean; error?: string }> {
-    return new Promise((resolve) => {
-      const timeout = setTimeout(
-        () => resolve({ ok: false, error: "Timed out — try refreshing the page" }),
-        90000,
-      );
-
-      function onDone(event: MessageEvent) {
-        if (event.data?.type !== "marks:archive-done") return;
-        window.removeEventListener("message", onDone);
-        clearTimeout(timeout);
-        resolve({ ok: event.data.ok, error: event.data.error });
-      }
-
-      window.addEventListener("message", onDone);
+  function prepareArchiveCapture() {
+    // Tell extension to prepare for capture (stores bookmarkId + readerTabId)
+    // content-archive.js will auto-capture when user lands on a snapshot page
+    window.postMessage({
+      type: "marks:prepare-archive",
+      bookmarkId,
+      url: bookmarkUrl,
     });
+    setLoading(true);
+    setStatus("Waiting for archive capture…");
   }
 
-  async function archive(forceArchive = false) {
+  async function archive() {
     setLoading(true);
     setError("");
+    setStatus("Extracting…");
 
     try {
-      // "try web archive" with extension installed
-      if (forceArchive && hasExtension()) {
-        // Tell extension to open archive.today tab and prepare for capture
-        // (extension uses chrome.tabs.create which isn't blocked by popup blockers)
-        setStatus("Opening archive.today…");
-        window.postMessage({
-          type: "marks:prepare-archive",
-          bookmarkId,
-          url: bookmarkUrl,
-        });
-
-        // 3. Wait for extension to capture, send to server, and notify us
-        setStatus("Capturing from archive.today…");
-        const result = await waitForArchiveDone();
-
-        setStatus("");
-        setLoading(false);
-        if (result.ok) {
-          router.refresh();
-        } else {
-          setError(result.error ?? "Could not capture from archive.today");
-        }
-        return;
-      }
-
-      // Server-side extraction path
-      setStatus(forceArchive ? "Trying web archives…" : "Extracting…");
-
       const res = await fetch(`/api/bookmarks/${bookmarkId}/archive`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force_archive: forceArchive }),
+        body: JSON.stringify({ force_archive: false }),
       });
 
       if (res.ok) {
@@ -118,17 +96,23 @@ export function ArchiveActions({
     <>
       {error && <span className="archive-error">{error}</span>}
       {!isArchived && (
-        <button className="reader-action-btn" onClick={() => archive(false)}>
+        <button className="reader-action-btn" onClick={() => archive()}>
           archive
         </button>
       )}
       {isArchived && source === "readability" && (
-        <button className="reader-action-btn" onClick={() => archive(true)}>
+        <a
+          className="reader-action-btn"
+          href={`https://archive.today/newest/${encodeURIComponent(bookmarkUrl)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={prepareArchiveCapture}
+        >
           try web archive
-        </button>
+        </a>
       )}
       {isArchived && (
-        <button className="reader-action-btn" onClick={() => archive(false)}>
+        <button className="reader-action-btn" onClick={() => archive()}>
           re-extract
         </button>
       )}

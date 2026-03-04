@@ -113,14 +113,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         url: msg.url,
         readerTabId: sender.tab?.id,
       },
-    }).then(() => {
-      // Open archive.today tab via extension API (not subject to popup blockers)
-      chrome.tabs.create({
-        url: `https://archive.today/?run=1&url=${encodeURIComponent(msg.url)}`,
-        active: true,
-      });
-      sendResponse({ ok: true });
-    });
+    }).then(() => sendResponse({ ok: true }));
     return true;
   }
   // Content script on archive.today captured the HTML

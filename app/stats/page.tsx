@@ -35,9 +35,12 @@ export default function StatsPage() {
 
   useEffect(() => {
     fetch("/api/reading-stats")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load stats");
+        return r.json();
+      })
       .then((data) => {
-        setStats(data);
+        if (data && !data.error) setStats(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));

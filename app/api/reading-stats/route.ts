@@ -8,15 +8,100 @@ export async function GET() {
     const user = await requireUser();
     const supabase = await createClient();
 
+    // Try the RPC first
     const { data, error } = await supabase.rpc("get_reading_stats", {
       user_uuid: user.id,
     });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!error && data) {
+      return NextResponse.json(data);
     }
 
-    return NextResponse.json(data);
+    // Fallback: query directly if RPC doesn't exist yet
+    const { data: sessions } = await supabase
+      .from("reading_sessions")
+      .select("bookmark_id, started_at, duration_seconds, word_count")
+      .eq("user_id", user.id);
+
+    if (!sessions || sessions.length === 0) {
+      return NextResponse.json({
+        total_articles_read: 0,
+        total_words_read: 0,
+        total_reading_seconds: 0,
+        articles_this_week: 0,
+        articles_this_month: 0,
+        streak_days: 0,
+        daily_reading: [],
+        top_reading_days: [],
+      });
+    }
+
+    const meaningful = sessions.filter((s) => s.duration_seconds > 10);
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const uniqueArticles = new Set(meaningful.map((s) => s.bookmark_id));
+    const weekArticles = new Set(
+      meaningful
+        .filter((s) => new Date(s.started_at) >= weekStart)
+        .map((s) => s.bookmark_id),
+    );
+    const monthArticles = new Set(
+      meaningful
+        .filter((s) => new Date(s.started_at) >= monthStart)
+        .map((s) => s.bookmark_id),
+    );
+
+    // Daily reading for last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dailyMap = new Map<
+      string,
+      { articles: Set<number>; seconds: number; words: number }
+    >();
+    for (const s of sessions.filter(
+      (s) => new Date(s.started_at) >= thirtyDaysAgo,
+    )) {
+      const day = new Date(s.started_at).toISOString().slice(0, 10);
+      const entry = dailyMap.get(day) ?? {
+        articles: new Set(),
+        seconds: 0,
+        words: 0,
+      };
+      entry.articles.add(s.bookmark_id);
+      entry.seconds += s.duration_seconds;
+      entry.words += s.word_count;
+      dailyMap.set(day, entry);
+    }
+
+    const daily_reading = [...dailyMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, v]) => ({
+        day,
+        articles: v.articles.size,
+        seconds: v.seconds,
+        words: v.words,
+      }));
+
+    return NextResponse.json({
+      total_articles_read: uniqueArticles.size,
+      total_words_read: meaningful.reduce((sum, s) => sum + s.word_count, 0),
+      total_reading_seconds: sessions.reduce(
+        (sum, s) => sum + s.duration_seconds,
+        0,
+      ),
+      articles_this_week: weekArticles.size,
+      articles_this_month: monthArticles.size,
+      streak_days: 0,
+      daily_reading,
+      top_reading_days: daily_reading
+        .filter((d) => d.words > 0)
+        .sort((a, b) => b.words - a.words)
+        .slice(0, 5),
+    });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

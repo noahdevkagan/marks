@@ -34,8 +34,36 @@ create policy "Users can update own sessions"
 -- Helper: get reading stats for a user
 create or replace function get_reading_stats(user_uuid uuid)
 returns json
-language sql stable
+language plpgsql stable
 as $$
+declare
+  result json;
+  streak int := 0;
+  check_date date := current_date;
+  found_day boolean;
+begin
+  -- Calculate streak: count consecutive days backwards from today
+  loop
+    select exists(
+      select 1 from reading_sessions
+      where user_id = user_uuid
+        and duration_seconds > 10
+        and started_at::date = check_date
+    ) into found_day;
+
+    if not found_day then
+      -- Allow skipping today if no reading yet
+      if check_date = current_date and streak = 0 then
+        check_date := check_date - 1;
+        continue;
+      end if;
+      exit;
+    end if;
+
+    streak := streak + 1;
+    check_date := check_date - 1;
+  end loop;
+
   select json_build_object(
     'total_articles_read', (
       select count(distinct bookmark_id)
@@ -66,23 +94,7 @@ as $$
         and duration_seconds > 10
         and started_at >= date_trunc('month', now())
     ),
-    'streak_days', (
-      select count(*)::int from (
-        select distinct date_trunc('day', started_at)::date as d
-        from reading_sessions
-        where user_id = user_uuid and duration_seconds > 10
-        order by d desc
-      ) sub
-      where d >= current_date - (
-        select count(*)::int from (
-          select distinct date_trunc('day', started_at)::date as d2
-          from reading_sessions
-          where user_id = user_uuid and duration_seconds > 10
-            and started_at >= current_date - interval '365 days'
-          order by d2 desc
-        ) s2
-      )
-    ),
+    'streak_days', streak,
     'daily_reading', (
       select coalesce(json_agg(row_to_json(t)), '[]'::json) from (
         select
@@ -110,5 +122,8 @@ as $$
         limit 5
       ) t
     )
-  );
+  ) into result;
+
+  return result;
+end;
 $$;

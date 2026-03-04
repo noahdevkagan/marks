@@ -4,6 +4,8 @@ import { getBookmark } from "@/lib/db";
 import { createClient } from "@/lib/supabase-server";
 import { ArchiveActions } from "./archive-actions";
 import { EnrichActions } from "./enrich-actions";
+import { ReaderMarkReadButton } from "./mark-read-button";
+import { ReadingTracker } from "./reading-tracker";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -23,6 +25,7 @@ export default async function ReaderPage({ params }: Props) {
 
   return (
     <div className="reader-container">
+      <ReadingTracker bookmarkId={id} wordCount={archived?.word_count ?? 0} />
       <nav className="reader-nav">
         <Link href="/">&larr; back</Link>
         <div className="reader-nav-actions">
@@ -35,6 +38,7 @@ export default async function ReaderPage({ params }: Props) {
             isArchived={!!archived}
             source={archived?.source}
           />
+          <ReaderMarkReadButton bookmarkId={id} isRead={bookmark.is_read} />
           {!enrichment && (
             <EnrichActions bookmarkId={id} enrichment={null} />
           )}

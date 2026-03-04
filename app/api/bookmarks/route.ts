@@ -22,8 +22,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  let user;
   try {
-    const user = await requireUser();
+    user = await requireUser();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
     const body = await req.json();
 
     let title = body.title ?? "";
@@ -93,11 +99,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(bookmark, { status: 201 });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    if (msg === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    console.error("[POST /api/bookmarks] error:", msg);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[POST /api/bookmarks] error:", e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

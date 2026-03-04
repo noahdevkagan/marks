@@ -108,11 +108,25 @@
       if (tag) hashtags.push(tag);
     }
 
+    // Extract media URLs (images and videos)
+    const mediaUrls = [];
+    const imgEls = article.querySelectorAll('img[src*="pbs.twimg.com"]');
+    for (const img of imgEls) {
+      const src = img.getAttribute("src");
+      if (src && !src.includes("profile_images")) mediaUrls.push(src);
+    }
+    const videoEls = article.querySelectorAll("video source, video");
+    for (const vid of videoEls) {
+      const src = vid.getAttribute("src");
+      if (src) mediaUrls.push(src);
+    }
+
     return {
       url: tweetUrl,
       text,
       handle,
       hashtags,
+      mediaUrls,
       title: handle ? `@${handle}: ${text.slice(0, 100)}` : text.slice(0, 100),
     };
   }
@@ -130,6 +144,12 @@
           description: tweet.text,
           tags,
           is_read: false,
+          type: "tweet",
+          type_metadata: {
+            author: tweet.handle,
+            tweet_text: tweet.text,
+            media_urls: tweet.mediaUrls || [],
+          },
         },
       });
 

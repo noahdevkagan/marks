@@ -5,8 +5,10 @@ import {
   extractArticle,
   extractViaArchive,
   extractFromHtml,
+  extractMediaUrls,
 } from "@/lib/extract";
 import { createClient } from "@/lib/supabase-server";
+import { uploadToStorage } from "@/lib/storage";
 
 export const maxDuration = 60;
 
@@ -14,7 +16,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Params) {
   try {
-    await requireUser();
+    const user = await requireUser();
     const { id: idStr } = await params;
     const id = parseInt(idStr, 10);
 
@@ -68,6 +70,62 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     // Mark bookmark as archived
     await updateBookmark(id, { is_archived: true });
+
+    // Upload HTML archive to Supabase Storage as durable backup (fire-and-forget)
+    (async () => {
+      try {
+        await uploadToStorage(
+          user.id,
+          id,
+          "archive.html",
+          article!.content_html,
+          "text/html",
+          "html_archive",
+          bookmark.url,
+        );
+
+        // Try to download and store og:image as thumbnail
+        const media = extractMediaUrls(article!.content_html);
+        const imageUrl = media.ogImage || media.images[0];
+        if (imageUrl) {
+          try {
+            const imgRes = await fetch(imageUrl, {
+              signal: AbortSignal.timeout(10000),
+            });
+            if (imgRes.ok) {
+              const buffer = Buffer.from(await imgRes.arrayBuffer());
+              const ct = imgRes.headers.get("content-type") || "image/jpeg";
+              const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+              await uploadToStorage(
+                user.id,
+                id,
+                `thumbnail.${ext}`,
+                buffer,
+                ct,
+                "thumbnail",
+                imageUrl,
+              );
+            }
+          } catch {
+            // thumbnail download failed, not critical
+          }
+        }
+      } catch {
+        // storage upload failed, archive still works via Postgres
+      }
+    })();
+
+    // Auto-enrich after successful archive (fire-and-forget)
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://marks-drab.vercel.app";
+    const authHeader = req.headers.get("authorization") || "";
+    fetch(`${appUrl}/api/bookmarks/${id}/enrich`, {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/json",
+      },
+    }).catch(() => {});
 
     return NextResponse.json({
       ok: true,

@@ -10,6 +10,8 @@ export type Bookmark = {
   created_at: string;
   updated_at: string;
   user_id: string;
+  type: string;
+  type_metadata: Record<string, unknown>;
   tags?: string[];
 };
 
@@ -87,6 +89,8 @@ export async function createBookmark(input: {
   is_read?: boolean;
   created_at?: string;
   user_id: string;
+  type?: string;
+  type_metadata?: Record<string, unknown>;
 }): Promise<BookmarkWithTags> {
   const { tags = [], ...bookmarkData } = input;
   const supabase = await createClient();
@@ -100,6 +104,8 @@ export async function createBookmark(input: {
         description: bookmarkData.description ?? "",
         is_read: bookmarkData.is_read ?? false,
         user_id: bookmarkData.user_id,
+        type: bookmarkData.type ?? "article",
+        type_metadata: bookmarkData.type_metadata ?? {},
         created_at: bookmarkData.created_at ?? new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },

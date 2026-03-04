@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { getBookmarks, createBookmark, setBookmarkTags, getAllTags } from "@/lib/db";
 import { extractMetadata } from "@/lib/extract";
+import { detectBookmarkType } from "@/lib/detect-type";
 
 function looksLikeUrl(title: string): boolean {
   return !title || /^https?:\/\//.test(title) || title === title.trim().replace(/\s/g, "");
@@ -44,6 +45,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const type = body.type ?? detectBookmarkType(body.url);
+
     const bookmark = await createBookmark({
       url: body.url,
       title,
@@ -51,6 +54,8 @@ export async function POST(req: NextRequest) {
       tags: body.tags ?? [],
       is_read: body.is_read ?? false,
       user_id: user.id,
+      type,
+      type_metadata: body.type_metadata ?? {},
     });
 
     const appUrl =
@@ -85,9 +90,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Auto-enrich Twitter bookmarks in background (fire-and-forget)
-    const isTwitter =
-      body.url?.includes("x.com/") || body.url?.includes("twitter.com/");
-    if (isTwitter) {
+    if (type === "tweet") {
       fetch(`${appUrl}/api/bookmarks/${bookmark.id}/enrich`, {
         method: "POST",
         headers: {

@@ -9,6 +9,16 @@ import { ReadingTracker } from "./reading-tracker";
 
 type Props = { params: Promise<{ id: string }> };
 
+function getYouTubeId(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "youtu.be") return u.pathname.slice(1);
+    return u.searchParams.get("v") ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export default async function ReaderPage({ params }: Props) {
   const { id: idStr } = await params;
   const id = parseInt(idStr, 10);
@@ -48,12 +58,23 @@ export default async function ReaderPage({ params }: Props) {
       <article className="reader-article">
         <header className="reader-header">
           <h1>{bookmark.title || bookmark.url}</h1>
-          {archived?.byline && (
+          {bookmark.type === "tweet" && bookmark.type_metadata?.author && (
+            <p className="reader-byline">
+              @{String(bookmark.type_metadata.author)}
+            </p>
+          )}
+          {bookmark.type !== "tweet" && archived?.byline && (
             <p className="reader-byline">{archived.byline}</p>
           )}
           <div className="reader-meta">
+            {bookmark.type && bookmark.type !== "article" && (
+              <>
+                <span className="reader-type-badge">{bookmark.type}</span>
+                <span>&middot;</span>
+              </>
+            )}
             <span>{new URL(bookmark.url).hostname.replace("www.", "")}</span>
-            {archived && (
+            {archived && bookmark.type !== "video" && bookmark.type !== "image" && (
               <>
                 <span>&middot;</span>
                 <span>{archived.word_count?.toLocaleString()} words</span>
@@ -74,7 +95,36 @@ export default async function ReaderPage({ params }: Props) {
           </div>
         </header>
 
-        {archived ? (
+        {bookmark.type === "video" ? (
+          <div className="reader-video">
+            {bookmark.url.includes("youtube.com") || bookmark.url.includes("youtu.be") ? (
+              <iframe
+                className="reader-video-embed"
+                src={`https://www.youtube.com/embed/${getYouTubeId(bookmark.url)}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={bookmark.title}
+              />
+            ) : (
+              <p>
+                <a href={bookmark.url} target="_blank" rel="noopener noreferrer" className="reader-video-link">
+                  Watch video &rarr;
+                </a>
+              </p>
+            )}
+            {archived && (
+              <div
+                className="reader-content"
+                dangerouslySetInnerHTML={{ __html: archived.content_html }}
+              />
+            )}
+          </div>
+        ) : bookmark.type === "image" ? (
+          <div className="reader-image">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={bookmark.url} alt={bookmark.title || "Bookmarked image"} className="reader-image-full" />
+          </div>
+        ) : archived ? (
           <div
             className="reader-content"
             dangerouslySetInnerHTML={{ __html: archived.content_html }}

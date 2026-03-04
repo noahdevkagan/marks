@@ -14,6 +14,14 @@ type Stats = {
   top_reading_days: { day: string; articles: number; words: number }[];
 };
 
+type StorageInfo = {
+  bytes_used: number;
+  storage_limit: number;
+  formatted_used: string;
+  formatted_limit: string;
+  percentage: number;
+};
+
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   const mins = Math.floor(seconds / 60);
@@ -31,19 +39,22 @@ function formatWords(count: number): string {
 
 export default function StatsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [storage, setStorage] = useState<StorageInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/reading-stats")
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to load stats");
-        return r.json();
-      })
-      .then((data) => {
-        if (data && !data.error) setStats(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch("/api/reading-stats")
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+      fetch("/api/storage")
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null),
+    ]).then(([statsData, storageData]) => {
+      if (statsData && !statsData.error) setStats(statsData);
+      if (storageData && !storageData.error) setStorage(storageData);
+      setLoading(false);
+    });
   }, []);
 
   if (loading) {
@@ -52,7 +63,10 @@ export default function StatsPage() {
         <header>
           <h1>Reading Stats</h1>
           <nav>
-            <Link href="/">back</Link>
+            <Link href="/">all</Link>
+            <Link href="/read">read later</Link>
+            <Link href="/actions">actions</Link>
+            <Link href="/stats">stats</Link>
           </nav>
         </header>
         <p className="stats-loading">Loading...</p>
@@ -60,114 +74,132 @@ export default function StatsPage() {
     );
   }
 
-  if (!stats) {
-    return (
-      <div className="container stats-container">
-        <header>
-          <h1>Reading Stats</h1>
-          <nav>
-            <Link href="/">back</Link>
-          </nav>
-        </header>
-        <div className="empty">
-          <p>No reading data yet. Start reading some articles!</p>
-        </div>
-      </div>
-    );
-  }
-
-  const maxDailyWords = Math.max(
-    ...stats.daily_reading.map((d) => d.words),
-    1,
-  );
+  const maxDailyWords = stats
+    ? Math.max(...stats.daily_reading.map((d) => d.words), 1)
+    : 1;
 
   return (
     <div className="container stats-container">
       <header>
         <h1>Reading Stats</h1>
         <nav>
-          <Link href="/">back</Link>
+          <Link href="/">all</Link>
+          <Link href="/read">read later</Link>
+          <Link href="/actions">actions</Link>
+          <Link href="/stats">stats</Link>
         </nav>
       </header>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <span className="stat-value">{stats.total_articles_read}</span>
-          <span className="stat-label">articles read</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-value">{formatWords(stats.total_words_read)}</span>
-          <span className="stat-label">words consumed</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-value">
-            {formatDuration(stats.total_reading_seconds)}
-          </span>
-          <span className="stat-label">time reading</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-value">{stats.streak_days}</span>
-          <span className="stat-label">day streak</span>
-        </div>
-      </div>
-
-      <div className="stats-section">
-        <h2>This period</h2>
-        <div className="stats-period">
-          <span>
-            <strong>{stats.articles_this_week}</strong> articles this week
-          </span>
-          <span>
-            <strong>{stats.articles_this_month}</strong> articles this month
-          </span>
-        </div>
-      </div>
-
-      {stats.daily_reading.length > 0 && (
-        <div className="stats-section">
-          <h2>Last 30 days</h2>
-          <div className="stats-chart">
-            {stats.daily_reading.map((d) => (
-              <div key={d.day} className="chart-bar-wrap" title={`${new Date(d.day).toLocaleDateString("en-US", { month: "short", day: "numeric" })}: ${d.articles} articles, ${formatWords(d.words)} words`}>
-                <div
-                  className="chart-bar"
-                  style={{
-                    height: `${Math.max((d.words / maxDailyWords) * 100, 2)}%`,
-                  }}
-                />
-                {new Date(d.day).getDay() === 1 && (
-                  <span className="chart-label">
-                    {new Date(d.day).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
-                )}
-              </div>
-            ))}
+      {stats ? (
+        <>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-value">{stats.total_articles_read}</span>
+              <span className="stat-label">articles read</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">{formatWords(stats.total_words_read)}</span>
+              <span className="stat-label">words consumed</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">
+                {formatDuration(stats.total_reading_seconds)}
+              </span>
+              <span className="stat-label">time reading</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-value">{stats.streak_days}</span>
+              <span className="stat-label">day streak</span>
+            </div>
           </div>
+
+          <div className="stats-section">
+            <h2>This period</h2>
+            <div className="stats-period">
+              <span>
+                <strong>{stats.articles_this_week}</strong> articles this week
+              </span>
+              <span>
+                <strong>{stats.articles_this_month}</strong> articles this month
+              </span>
+            </div>
+          </div>
+
+          {stats.daily_reading.length > 0 && (
+            <div className="stats-section">
+              <h2>Last 30 days</h2>
+              <div className="stats-chart">
+                {stats.daily_reading.map((d) => (
+                  <div key={d.day} className="chart-bar-wrap" title={`${new Date(d.day).toLocaleDateString("en-US", { month: "short", day: "numeric" })}: ${d.articles} articles, ${formatWords(d.words)} words`}>
+                    <div
+                      className="chart-bar"
+                      style={{
+                        height: `${Math.max((d.words / maxDailyWords) * 100, 2)}%`,
+                      }}
+                    />
+                    {new Date(d.day).getDay() === 1 && (
+                      <span className="chart-label">
+                        {new Date(d.day).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {stats.top_reading_days.length > 0 && (
+            <div className="stats-section">
+              <h2>Best reading days</h2>
+              <ul className="stats-top-days">
+                {stats.top_reading_days.map((d) => (
+                  <li key={d.day}>
+                    <span className="top-day-date">
+                      {new Date(d.day).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                    <span className="top-day-stats">
+                      {d.articles} articles &middot; {formatWords(d.words)} words
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="empty">
+          <p>No reading data yet. Start reading some articles!</p>
         </div>
       )}
 
-      {stats.top_reading_days.length > 0 && (
-        <div className="stats-section">
-          <h2>Best reading days</h2>
-          <ul className="stats-top-days">
-            {stats.top_reading_days.map((d) => (
-              <li key={d.day}>
-                <span className="top-day-date">
-                  {new Date(d.day).toLocaleDateString("en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-                <span className="top-day-stats">
-                  {d.articles} articles &middot; {formatWords(d.words)} words
-                </span>
-              </li>
-            ))}
-          </ul>
+      {storage && (
+        <div className="storage-card">
+          <div className="storage-header">
+            <span className="storage-title">Storage</span>
+            <span className="storage-usage">
+              {storage.formatted_used} / {storage.formatted_limit}
+            </span>
+          </div>
+          <div className="storage-bar-bg">
+            <div
+              className="storage-bar-fill"
+              style={{ width: `${Math.min(storage.percentage, 100)}%` }}
+            />
+          </div>
+          <p className="storage-note">
+            {storage.percentage < 80
+              ? "Archives, thumbnails, and media are stored durably."
+              : storage.percentage < 100
+                ? "Getting close to your limit. Consider upgrading soon."
+                : "Storage limit reached. New uploads will be skipped."}
+          </p>
         </div>
       )}
     </div>

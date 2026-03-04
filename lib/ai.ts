@@ -51,6 +51,52 @@ Return ONLY a JSON array of strings, e.g. ["tag1", "tag2", "tag3"]. No markdown 
   return tags.map((t) => t.toLowerCase().trim()).filter((t) => t.length > 0);
 }
 
+export type ArticleEnrichment = {
+  summary: string;
+  action_items: { text: string }[];
+  tags: string[];
+};
+
+export async function enrichArticle(
+  contentText: string,
+  title: string,
+  existingTags: string[],
+): Promise<ArticleEnrichment> {
+  // Truncate content to ~4000 chars to keep cost/latency low
+  const truncated = contentText.slice(0, 4000);
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-20250214",
+    max_tokens: 512,
+    messages: [
+      {
+        role: "user",
+        content: `Analyze this article:
+
+Title: ${title}
+Content: ${truncated}
+
+Return a JSON object with:
+1. "summary": A concise 1-2 sentence summary of the article's key point.
+2. "action_items": An array of concrete, actionable takeaways from this article — things the reader could actually do (recipes to try, tools to use, techniques to apply, products to buy, habits to adopt, steps to follow). Each item should have a "text" field. Return an empty array [] if the content is not actionable (e.g. pure news, opinion pieces, entertainment).
+3. "tags": 2-5 topic tags for categorization. Lowercase, no #. Prefer matching from this list when relevant: [${existingTags.slice(0, 50).join(", ")}]. Add new tags only if nothing fits.
+
+Return ONLY valid JSON, no markdown fences.`,
+      },
+    ],
+  });
+
+  const text =
+    response.content[0].type === "text" ? response.content[0].text : "";
+
+  const cleaned = text
+    .replace(/^```json?\n?/, "")
+    .replace(/\n?```$/, "")
+    .trim();
+
+  return JSON.parse(cleaned) as ArticleEnrichment;
+}
+
 export async function enrichTweet(
   tweetText: string,
   handle: string,

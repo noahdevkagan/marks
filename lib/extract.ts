@@ -208,6 +208,44 @@ export function extractFromHtml(
   return { ...result, source: "readability" };
 }
 
+// Extract OG/media URLs from HTML for storage
+export function extractMediaUrls(html: string): {
+  ogImage: string | null;
+  ogVideo: string | null;
+  images: string[];
+} {
+  try {
+    const { document: doc } = parseHTML(html);
+
+    const ogImage =
+      doc
+        .querySelector('meta[property="og:image"]')
+        ?.getAttribute("content") ?? null;
+
+    const ogVideo =
+      doc
+        .querySelector('meta[property="og:video"]')
+        ?.getAttribute("content") ?? null;
+
+    const images: string[] = [];
+    const imgEls = doc.querySelectorAll("img[src]");
+    for (const img of imgEls) {
+      const src = img.getAttribute("src");
+      if (!src) continue;
+      // Skip tracking pixels and tiny images
+      const width = parseInt(img.getAttribute("width") ?? "0", 10);
+      const height = parseInt(img.getAttribute("height") ?? "0", 10);
+      if ((width > 0 && width < 50) || (height > 0 && height < 50)) continue;
+      if (src.includes("pixel") || src.includes("tracking") || src.includes("1x1")) continue;
+      images.push(src);
+    }
+
+    return { ogImage, ogVideo, images: images.slice(0, 10) };
+  } catch {
+    return { ogImage: null, ogVideo: null, images: [] };
+  }
+}
+
 // For manual "try archive" button — tries archive.ph, then Wayback Machine
 export async function extractViaArchive(
   url: string,

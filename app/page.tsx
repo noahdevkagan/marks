@@ -29,6 +29,7 @@ export default async function Home({
         <nav>
           <Link href="/">all</Link>
           <Link href="/read">read later</Link>
+          <Link href="/actions">actions</Link>
           <Link href="/stats">stats</Link>
           <Link href="/add" className="nav-add">
             + add

@@ -12,6 +12,15 @@ type Bookmark = {
   description: string;
   tags: string[];
   created_at: string;
+  type?: string;
+};
+
+const TYPE_ICONS: Record<string, string> = {
+  tweet: "\uD835\uDD4F",
+  video: "\u25B6",
+  image: "\uD83D\uDDBC\uFE0F",
+  pdf: "\uD83D\uDCC4",
+  product: "\uD83D\uDED2",
 };
 
 export function BookmarkItem({
@@ -167,6 +176,11 @@ export function BookmarkItem({
           height={16}
           loading="lazy"
         />
+        {bookmark.type && bookmark.type !== "article" && TYPE_ICONS[bookmark.type] && (
+          <span className="type-badge" title={bookmark.type}>
+            {TYPE_ICONS[bookmark.type]}
+          </span>
+        )}
         <div className="bookmark-content">
           <Link
             href={`/reader/${bookmark.id}`}

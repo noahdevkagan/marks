@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { getBookmark, getAllTags, setBookmarkTags } from "@/lib/db";
-import { enrichTweet } from "@/lib/ai";
+import { enrichTweet, enrichArticle } from "@/lib/ai";
 import { createClient } from "@/lib/supabase-server";
 
 export const maxDuration = 30;
@@ -19,24 +19,48 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Use description as tweet text (content-twitter.js stores tweet text there)
-    const tweetText = bookmark.description || bookmark.title || "";
-    if (!tweetText.trim()) {
-      return NextResponse.json(
-        { error: "No text content to analyze" },
-        { status: 422 },
-      );
-    }
-
     // Get user's existing tags for vocabulary matching
     const existingTags = await getAllTags();
     const tagNames = existingTags.map((t) => t.name);
 
-    // Extract handle from title (format: "@handle: text...")
-    const handleMatch = bookmark.title.match(/^@(\w+):/);
-    const handle = handleMatch?.[1] || "";
+    let enrichment: {
+      summary: string;
+      action_items: { text: string }[];
+      tags: string[];
+    };
 
-    const enrichment = await enrichTweet(tweetText, handle, tagNames);
+    if (bookmark.type === "tweet") {
+      // Tweet enrichment: use description (tweet text)
+      const tweetText = bookmark.description || bookmark.title || "";
+      if (!tweetText.trim()) {
+        return NextResponse.json(
+          { error: "No text content to analyze" },
+          { status: 422 },
+        );
+      }
+      const handleMatch = bookmark.title.match(/^@(\w+):/);
+      const handle = handleMatch?.[1] || "";
+      enrichment = await enrichTweet(tweetText, handle, tagNames);
+    } else {
+      // Article/other: use archived content text
+      const supabase = await createClient();
+      const { data: archived } = await supabase
+        .from("archived_content")
+        .select("content_text")
+        .eq("bookmark_id", id)
+        .single();
+
+      const contentText =
+        archived?.content_text || bookmark.description || "";
+      if (!contentText.trim()) {
+        return NextResponse.json(
+          { error: "No content to analyze. Archive the page first." },
+          { status: 422 },
+        );
+      }
+
+      enrichment = await enrichArticle(contentText, bookmark.title, tagNames);
+    }
 
     // Upsert enrichment data
     const supabase = await createClient();
@@ -50,7 +74,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           created_at: new Date().toISOString(),
         })),
         ai_tags: enrichment.tags,
-        model: "claude-3-5-haiku-20241022",
+        model: "claude-haiku-4-20250214",
         processed_at: new Date().toISOString(),
       },
       { onConflict: "bookmark_id" },

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase-browser";
 
 export default function AddPage() {
   return (
@@ -32,39 +31,12 @@ function AddForm() {
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [readLater, setReadLater] = useState(false);
-  const [recentTags, setRecentTags] = useState<string[]>([]);
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fetchingMeta, setFetchingMeta] = useState(false);
   const [error, setError] = useState("");
   const isPopup = !!initialUrl;
-
-  useEffect(() => {
-    // Fetch recent tags for pills
-    const supabase = createClient();
-    supabase
-      .from("bookmark_tags")
-      .select("tag_id, tags(name)")
-      .limit(50)
-      .then(({ data }) => {
-        if (!data) return;
-        const counts = new Map<string, number>();
-        for (const row of data as unknown as {
-          tag_id: number;
-          tags: { name: string };
-        }[]) {
-          const name = row.tags?.name;
-          if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
-        }
-        const sorted = [...counts.entries()]
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 15)
-          .map(([name]) => name);
-        setRecentTags(sorted);
-      });
-  }, []);
 
   async function fetchSuggestedTags(linkUrl: string) {
     if (!linkUrl) return;
@@ -74,7 +46,6 @@ function AddForm() {
       return;
     }
     setLoadingSuggestions(true);
-    setSuggestionsLoaded(false);
     try {
       const res = await fetch(
         `/api/suggest-tags?url=${encodeURIComponent(linkUrl)}`,
@@ -87,7 +58,6 @@ function AddForm() {
       // Silently fail — suggestions are optional
     } finally {
       setLoadingSuggestions(false);
-      setSuggestionsLoaded(true);
     }
   }
 
@@ -278,24 +248,6 @@ function AddForm() {
                 ))}
             </div>
           )}
-
-        {(suggestionsLoaded || !url) && recentTags.length > 0 && (
-          <div className="recent-tags">
-            {recentTags
-              .filter((t) => !tags.includes(t) && !suggestedTags.includes(t))
-              .slice(0, 10)
-              .map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className="tag"
-                  onClick={() => addTag(t)}
-                >
-                  {t}
-                </button>
-              ))}
-          </div>
-        )}
 
         <label className="checkbox-label">
           <input

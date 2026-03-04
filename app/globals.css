@@ -1250,6 +1250,71 @@ header nav .nav-add {
   margin-bottom: 0.75rem;
 }
 
+.settings-description {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.import-steps {
+  margin-bottom: 1rem;
+}
+
+.import-step {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  margin-bottom: 0.25rem;
+}
+
+.import-step strong {
+  color: var(--text-muted);
+}
+
+.import-upload-btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.import-upload-btn:hover {
+  border-color: var(--accent);
+}
+
+.import-result {
+  font-size: 0.8125rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+.import-success {
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+.import-error {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  .import-success {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+  }
+  .import-error {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+  }
+}
+
 .settings-loading {
   color: var(--text-faint);
   font-size: 0.875rem;

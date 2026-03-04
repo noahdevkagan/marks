@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { InstallPrompt } from "./install-prompt";
 
 export const metadata: Metadata = {
   title: "Marks",
@@ -37,6 +38,7 @@ export default function RootLayout({
     <html lang="en">
       <head />
       <body>
+        <InstallPrompt />
         {children}
         <script
           dangerouslySetInnerHTML={{

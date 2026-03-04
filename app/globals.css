@@ -1327,6 +1327,73 @@ header nav .nav-add {
   margin-top: 0.5rem;
 }
 
+.storage-files {
+  margin-top: 1rem;
+}
+
+.storage-files-heading {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.storage-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.storage-file-group {
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.storage-file-group:last-child {
+  border-bottom: none;
+}
+
+.storage-file-bookmark {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.storage-file-title {
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.storage-file-title:hover {
+  color: var(--accent);
+}
+
+.storage-file-size {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.storage-file-details {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.storage-file-tag {
+  font-size: 0.6875rem;
+  color: var(--text-faint);
+}
+
 /* Bookmarklet */
 .bookmarklet-section {
   margin-top: 3rem;

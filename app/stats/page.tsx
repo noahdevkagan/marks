@@ -15,14 +15,6 @@ type Stats = {
   top_reading_days: { day: string; articles: number; words: number }[];
 };
 
-type StorageInfo = {
-  bytes_used: number;
-  storage_limit: number;
-  formatted_used: string;
-  formatted_limit: string;
-  percentage: number;
-};
-
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   const mins = Math.floor(seconds / 60);
@@ -40,22 +32,16 @@ function formatWords(count: number): string {
 
 export default function StatsPage() {
   const [stats, setStats] = useState<Stats | null>(null);
-  const [storage, setStorage] = useState<StorageInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/reading-stats")
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null),
-      fetch("/api/storage")
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null),
-    ]).then(([statsData, storageData]) => {
-      if (statsData && !statsData.error) setStats(statsData);
-      if (storageData && !storageData.error) setStorage(storageData);
-      setLoading(false);
-    });
+    fetch("/api/reading-stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && !data.error) setStats(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -188,29 +174,6 @@ export default function StatsPage() {
         </div>
       )}
 
-      {storage && (
-        <div className="storage-card">
-          <div className="storage-header">
-            <span className="storage-title">Storage</span>
-            <span className="storage-usage">
-              {storage.formatted_used} / {storage.formatted_limit}
-            </span>
-          </div>
-          <div className="storage-bar-bg">
-            <div
-              className="storage-bar-fill"
-              style={{ width: `${Math.min(storage.percentage, 100)}%` }}
-            />
-          </div>
-          <p className="storage-note">
-            {storage.percentage < 80
-              ? "Archives, thumbnails, and media are stored durably."
-              : storage.percentage < 100
-                ? "Getting close to your limit. Consider upgrading soon."
-                : "Storage limit reached. New uploads will be skipped."}
-          </p>
-        </div>
-      )}
     </div>
   );
 }

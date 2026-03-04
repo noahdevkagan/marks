@@ -3,6 +3,8 @@ import { requireUser } from "@/lib/auth";
 import { getBookmarks, createBookmark, setBookmarkTags, getAllTags } from "@/lib/db";
 import { extractMetadata } from "@/lib/extract";
 import { detectBookmarkType } from "@/lib/detect-type";
+import { enrichTweet } from "@/lib/ai";
+import { createClient } from "@/lib/supabase-server";
 
 function looksLikeUrl(title: string): boolean {
   return !title || /^https?:\/\//.test(title) || title === title.trim().replace(/\s/g, "");
@@ -83,6 +85,46 @@ export async function POST(req: NextRequest) {
         }
       } catch {
         // tag suggestion failed, not critical
+      }
+    }
+
+    // Enrich tweets directly (archive route can't extract article from tweets)
+    if (type === "tweet") {
+      try {
+        const tweetText = body.description || title || "";
+        if (tweetText.trim()) {
+          const handleMatch = title.match(/^@(\w+):/);
+          const handle = handleMatch?.[1] || "";
+          const existingTags = await getAllTags();
+          const tagNames = existingTags.map((t) => t.name);
+          const enrichment = await enrichTweet(tweetText, handle, tagNames);
+
+          const supabase = await createClient();
+          await supabase.from("bookmark_enrichments").upsert(
+            {
+              bookmark_id: bookmark.id,
+              summary: enrichment.summary,
+              action_items: enrichment.action_items.map((a) => ({
+                text: a.text,
+                completed: false,
+                created_at: new Date().toISOString(),
+              })),
+              ai_tags: enrichment.tags,
+              model: "claude-haiku-4-20250214",
+              processed_at: new Date().toISOString(),
+            },
+            { onConflict: "bookmark_id" },
+          );
+
+          // Merge AI tags
+          const currentTags = bookmark.tags ?? [];
+          const mergedTags = [
+            ...new Set([...currentTags, ...enrichment.tags]),
+          ];
+          await setBookmarkTags(bookmark.id, mergedTags);
+        }
+      } catch (err) {
+        console.error("Tweet enrichment error:", err);
       }
     }
 

@@ -27,12 +27,12 @@ export async function GET() {
     }
 
     // Fallback: query directly if RPC doesn't exist yet
-    const { data: sessions } = await supabase
+    const { data: sessions, error: sessionsError } = await supabase
       .from("reading_sessions")
       .select("bookmark_id, started_at, duration_seconds, word_count")
       .eq("user_id", user.id);
 
-    if (!sessions || sessions.length === 0) {
+    if (sessionsError || !sessions || sessions.length === 0) {
       return NextResponse.json({
         total_bookmarks_saved: totalSaved ?? 0,
         total_articles_read: 0,
@@ -172,7 +172,11 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ session_id: data.id });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (err) {
+    if (err instanceof Error && err.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    console.error("Reading stats error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

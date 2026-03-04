@@ -132,18 +132,15 @@ export default function SettingsPage() {
         </p>
         <div className="import-steps">
           <p className="import-step">
-            <strong>Safari:</strong> File &rarr; Export Bookmarks…{" "}
-            <a href="https://support.apple.com/guide/safari/import-or-export-bookmarks-ibrw1015/mac" target="_blank" rel="noopener noreferrer" className="import-help-link">how?</a>
+            <strong>Safari:</strong> File &rarr; Export Bookmarks…
           </p>
           <p className="import-step">
             <strong>Chrome:</strong> Bookmarks &rarr; Bookmark Manager &rarr;
-            ⋮ &rarr; Export bookmarks{" "}
-            <a href="https://support.google.com/chrome/answer/96816" target="_blank" rel="noopener noreferrer" className="import-help-link">how?</a>
+            ⋮ &rarr; Export bookmarks
           </p>
           <p className="import-step">
             <strong>Firefox:</strong> Bookmarks &rarr; Manage Bookmarks &rarr;
-            Import and Backup &rarr; Export to HTML{" "}
-            <a href="https://support.mozilla.org/en-US/kb/export-firefox-bookmarks-to-backup-or-transfer" target="_blank" rel="noopener noreferrer" className="import-help-link">how?</a>
+            Import and Backup &rarr; Export to HTML
           </p>
         </div>
         <label className="import-upload-btn">

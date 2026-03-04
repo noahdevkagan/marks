@@ -30,11 +30,9 @@ export default async function ReadLaterPage({
           <Link href="/add" className="nav-add">
             + add
           </Link>
-          <form action="/api/auth/signout" method="POST">
-            <button type="submit" className="nav-signout">
-              sign out
-            </button>
-          </form>
+          <Link href="/settings" className="nav-settings">
+            ⚙
+          </Link>
         </nav>
       </header>
 

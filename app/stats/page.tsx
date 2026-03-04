@@ -67,6 +67,7 @@ export default function StatsPage() {
             <Link href="/read">read later</Link>
             <Link href="/actions">actions</Link>
             <Link href="/stats">stats</Link>
+            <Link href="/settings" className="nav-settings">⚙</Link>
           </nav>
         </header>
         <p className="stats-loading">Loading...</p>

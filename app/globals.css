@@ -1288,6 +1288,51 @@ header nav .nav-add {
   color: var(--text-muted);
 }
 
+/* Settings page */
+.settings-section {
+  margin-bottom: 2rem;
+}
+
+.settings-heading {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.settings-loading {
+  color: var(--text-faint);
+  font-size: 0.875rem;
+}
+
+.settings-signout-btn {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.settings-signout-btn:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.nav-settings {
+  color: var(--text-faint) !important;
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.nav-settings:hover {
+  color: var(--text-muted) !important;
+}
+
 /* Storage card */
 .storage-card {
   background: var(--bg-surface);

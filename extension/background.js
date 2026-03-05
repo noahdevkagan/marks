@@ -298,6 +298,93 @@ async function fetchSuggestedTags(url, title) {
   }
 }
 
+// --- Kindle Highlights Sync ---
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === "kindle-start-sync") {
+    kindleStartSync(sender.tab?.id).then(sendResponse);
+    return true;
+  }
+  if (msg.type === "kindle-check-scrape") {
+    kindleCheckScrape(sender.tab?.id).then(sendResponse);
+    return true;
+  }
+  if (msg.type === "kindle-scrape-complete") {
+    kindleScrapeComplete(msg.payload).then(sendResponse);
+    return true;
+  }
+  if (msg.type === "kindle-scrape-progress") {
+    kindleRelayToApp({ type: "marks:kindle-sync-progress", message: msg.message });
+    return false;
+  }
+  if (msg.type === "kindle-scrape-error") {
+    kindleScrapeError(msg.error);
+    return false;
+  }
+});
+
+// Clean up if Amazon tab closed mid-sync
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const { kindleSyncState } = await chrome.storage.local.get("kindleSyncState");
+  if (kindleSyncState && kindleSyncState.amazonTabId === tabId) {
+    kindleRelayToApp({ type: "marks:kindle-sync-error", error: "Amazon tab was closed during sync" });
+    await chrome.storage.local.remove("kindleSyncState");
+  }
+});
+
+async function kindleStartSync(appTabId) {
+  const tab = await chrome.tabs.create({
+    url: "https://read.amazon.com/notebook",
+    active: true,
+  });
+  await chrome.storage.local.set({
+    kindleSyncState: { syncPending: true, appTabId, amazonTabId: tab.id },
+  });
+  return { ok: true };
+}
+
+async function kindleCheckScrape(amazonTabId) {
+  const { kindleSyncState } = await chrome.storage.local.get("kindleSyncState");
+  if (kindleSyncState && kindleSyncState.syncPending && kindleSyncState.amazonTabId === amazonTabId) {
+    return { shouldScrape: true };
+  }
+  return { shouldScrape: false };
+}
+
+async function kindleScrapeComplete(payload) {
+  const { kindleSyncState } = await chrome.storage.local.get("kindleSyncState");
+  if (!kindleSyncState) return { ok: false };
+
+  await kindleRelayToApp({ type: "marks:kindle-sync-data", payload });
+
+  try { await chrome.tabs.remove(kindleSyncState.amazonTabId); } catch {}
+  try { await chrome.tabs.update(kindleSyncState.appTabId, { active: true }); } catch {}
+
+  await chrome.storage.local.remove("kindleSyncState");
+  return { ok: true };
+}
+
+async function kindleScrapeError(error) {
+  await kindleRelayToApp({ type: "marks:kindle-sync-error", error });
+
+  const { kindleSyncState } = await chrome.storage.local.get("kindleSyncState");
+  if (kindleSyncState) {
+    try { await chrome.tabs.remove(kindleSyncState.amazonTabId); } catch {}
+    try { await chrome.tabs.update(kindleSyncState.appTabId, { active: true }); } catch {}
+  }
+  await chrome.storage.local.remove("kindleSyncState");
+}
+
+async function kindleRelayToApp(message) {
+  const { kindleSyncState } = await chrome.storage.local.get("kindleSyncState");
+  if (!kindleSyncState || !kindleSyncState.appTabId) return;
+  try {
+    await chrome.tabs.sendMessage(kindleSyncState.appTabId, message);
+  } catch {}
+}
+
+// --- Config helpers ---
+
 async function getConfig() {
   const data = await chrome.storage.local.get([
     "token",

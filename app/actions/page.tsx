@@ -36,7 +36,7 @@ export default async function ActionsPage() {
             <Link href="/read">read later</Link>
             <Link href="/actions">actions</Link>
             <Link href="/stats">stats</Link>
-            <Link href="/highlights">highlights</Link>
+            <Link href="/kindle">kindle</Link>
             <Link href="/add" className="nav-add">
               + add
             </Link>
@@ -105,7 +105,7 @@ export default async function ActionsPage() {
           <Link href="/read">read later</Link>
           <Link href="/actions">actions</Link>
           <Link href="/stats">stats</Link>
-          <Link href="/highlights">highlights</Link>
+          <Link href="/kindle">kindle</Link>
           <Link href="/add" className="nav-add">
             + add
           </Link>

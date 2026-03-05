@@ -28,9 +28,9 @@
     {
       "matches": [
         "https://getmarks.sh/reader/*",
-        "https://getmarks.sh/highlights*",
+        "https://getmarks.sh/kindle*",
         "https://marks-drab.vercel.app/reader/*",
-        "https://marks-drab.vercel.app/highlights*"
+        "https://marks-drab.vercel.app/kindle*"
       ],
       "js": ["content-marks-main.js"],
       "run_at": "document_start",
@@ -39,9 +39,9 @@
     {
       "matches": [
         "https://getmarks.sh/reader/*",
-        "https://getmarks.sh/highlights*",
+        "https://getmarks.sh/kindle*",
         "https://marks-drab.vercel.app/reader/*",
-        "https://marks-drab.vercel.app/highlights*"
+        "https://marks-drab.vercel.app/kindle*"
       ],
       "js": ["content-marks.js"],
       "run_at": "document_idle"

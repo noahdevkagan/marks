@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getBookmark } from "@/lib/db";
 import { createClient } from "@/lib/supabase-server";
 import { ArchiveActions } from "./archive-actions";
-import { EnrichActions } from "./enrich-actions";
+import { EnrichmentBlock } from "./enrichment-block";
 import { ReaderMarkReadButton } from "./mark-read-button";
 import { ReadingTracker } from "./reading-tracker";
 
@@ -49,9 +49,6 @@ export default async function ReaderPage({ params }: Props) {
             source={archived?.source}
           />
           <ReaderMarkReadButton bookmarkId={id} isRead={bookmark.is_read} />
-          {!enrichment && (
-            <EnrichActions bookmarkId={id} enrichment={null} />
-          )}
         </div>
       </nav>
 
@@ -145,18 +142,19 @@ export default async function ReaderPage({ params }: Props) {
           />
         ) : (
           <div className="reader-empty">
-            <p>This article hasn&rsquo;t been archived yet.</p>
+            <p>We couldn&rsquo;t extract this article.</p>
             <p>
-              Click <strong>archive</strong> above to extract the article
-              content for offline reading.
+              Try viewing the{" "}
+              <a href={bookmark.url} target="_blank" rel="noopener noreferrer">
+                original page
+              </a>
+              {" "}instead.
             </p>
           </div>
         )}
       </article>
 
-      {enrichment && (
-        <EnrichActions bookmarkId={id} enrichment={enrichment} />
-      )}
+      <EnrichmentBlock bookmarkId={id} enrichment={enrichment} />
 
       {bookmark.tags.length > 0 && (
         <div className="reader-tags">

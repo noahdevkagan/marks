@@ -95,11 +95,6 @@ export function ArchiveActions({
   return (
     <>
       {error && <span className="archive-error">{error}</span>}
-      {!isArchived && (
-        <button className="reader-action-btn" onClick={() => archive()}>
-          archive
-        </button>
-      )}
       {isArchived && source === "readability" && (
         <a
           className="reader-action-btn"
@@ -108,13 +103,8 @@ export function ArchiveActions({
           rel="noopener noreferrer"
           onClick={prepareArchiveCapture}
         >
-          try web archive
+          web archive
         </a>
-      )}
-      {isArchived && (
-        <button className="reader-action-btn" onClick={() => archive()}>
-          re-extract
-        </button>
       )}
     </>
   );

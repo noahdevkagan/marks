@@ -17,7 +17,7 @@ type Enrichment = {
   processed_at: string | null;
 };
 
-export function EnrichActions({
+export function EnrichmentBlock({
   bookmarkId,
   enrichment,
 }: {
@@ -28,9 +28,9 @@ export function EnrichActions({
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
 
-  async function enrich() {
+  async function reanalyze() {
     setLoading(true);
-    setStatus("Analyzing with AI...");
+    setStatus("Analyzing...");
 
     const res = await fetch(`/api/bookmarks/${bookmarkId}/enrich`, {
       method: "POST",
@@ -56,16 +56,10 @@ export function EnrichActions({
     router.refresh();
   }
 
+  if (!enrichment) return null;
+
   if (loading) {
     return <div className="enrich-status">{status}</div>;
-  }
-
-  if (!enrichment) {
-    return (
-      <button className="reader-action-btn" onClick={enrich}>
-        ✦ enrich
-      </button>
-    );
   }
 
   return (
@@ -99,11 +93,11 @@ export function EnrichActions({
 
       {enrichment.ai_tags && enrichment.ai_tags.length > 0 && (
         <div className="enrichment-tags">
-          <span className="enrichment-label">AI Tags</span>
+          <span className="enrichment-label">Suggested Tags</span>
           <div className="tags">
             {enrichment.ai_tags.map((t) => (
               <span key={t} className="tag ai-tag">
-                ✦ {t}
+                {t}
               </span>
             ))}
           </div>
@@ -112,7 +106,7 @@ export function EnrichActions({
 
       <button
         className="reader-action-btn enrich-refresh"
-        onClick={enrich}
+        onClick={reanalyze}
       >
         re-analyze
       </button>

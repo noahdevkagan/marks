@@ -94,15 +94,21 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "save-bookmark") {
-    saveBookmark(msg.data).then(sendResponse);
+    saveBookmark(msg.data)
+      .then(sendResponse)
+      .catch((err) => sendResponse({ ok: false, error: err.message || "Background worker error" }));
     return true; // async
   }
   if (msg.type === "suggest-tags") {
-    fetchSuggestedTags(msg.url).then(sendResponse);
+    fetchSuggestedTags(msg.url)
+      .then(sendResponse)
+      .catch(() => sendResponse({ tags: [] }));
     return true;
   }
   if (msg.type === "get-config") {
-    getConfig().then(sendResponse);
+    getConfig()
+      .then(sendResponse)
+      .catch(() => sendResponse({}));
     return true;
   }
   // Reader page asks us to prepare for an archive capture

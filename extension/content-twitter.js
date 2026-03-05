@@ -172,7 +172,8 @@
       updatePanel();
     } catch (err) {
       console.error("[Marks] save failed:", err);
-      showToast("Failed to save to Marks", true);
+      const msg = err.message || "Unknown error";
+      showToast(`Failed: ${msg}`, true);
     }
   }
 

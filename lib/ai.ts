@@ -15,7 +15,7 @@ export async function suggestBookmarkTags(
   existingTags: string[],
 ): Promise<string[]> {
   const response = await anthropic.messages.create({
-    model: "claude-haiku-4-20250214",
+    model: "claude-3-haiku-20240307",
     max_tokens: 256,
     messages: [
       {
@@ -66,7 +66,7 @@ export async function enrichArticle(
   const truncated = contentText.slice(0, 4000);
 
   const response = await anthropic.messages.create({
-    model: "claude-haiku-4-20250214",
+    model: "claude-3-haiku-20240307",
     max_tokens: 512,
     messages: [
       {
@@ -103,7 +103,7 @@ export async function enrichTweet(
   existingTags: string[],
 ): Promise<TweetEnrichment> {
   const response = await anthropic.messages.create({
-    model: "claude-haiku-4-20250214",
+    model: "claude-3-haiku-20240307",
     max_tokens: 512,
     messages: [
       {

@@ -2,9 +2,14 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic(); // reads ANTHROPIC_API_KEY from env
 
+export type ActionItem = {
+  text: string;
+  url?: string;
+};
+
 export type TweetEnrichment = {
   summary: string;
-  action_items: { text: string }[];
+  action_items: ActionItem[];
   tags: string[];
 };
 
@@ -53,7 +58,7 @@ Return ONLY a JSON array of strings, e.g. ["tag1", "tag2", "tag3"]. No markdown 
 
 export type ArticleEnrichment = {
   summary: string;
-  action_items: { text: string }[];
+  action_items: ActionItem[];
   tags: string[];
 };
 
@@ -78,7 +83,7 @@ Content: ${truncated}
 
 Return a JSON object with:
 1. "summary": A concise 1-2 sentence summary of the article's key point.
-2. "action_items": An array of concrete, actionable takeaways from this article — things the reader could actually do (recipes to try, tools to use, techniques to apply, products to buy, habits to adopt, steps to follow). Each item should have a "text" field. Return an empty array [] if the content is not actionable (e.g. pure news, opinion pieces, entertainment).
+2. "action_items": An array of concrete, actionable takeaways from this article — things the reader could actually do (recipes to try, tools to use, techniques to apply, products to buy, habits to adopt, steps to follow). Each item has "text" and optionally "url" (a relevant link from the article for that action — e.g. a GitHub repo, tool, product page). Return an empty array [] if the content is not actionable (e.g. pure news, opinion pieces, entertainment).
 3. "tags": 2-5 topic tags for categorization. Lowercase, no #. Prefer matching from this list when relevant: [${existingTags.slice(0, 50).join(", ")}]. Add new tags only if nothing fits.
 
 Return ONLY valid JSON, no markdown fences.`,
@@ -114,7 +119,7 @@ export async function enrichTweet(
 
 Return a JSON object with:
 1. "summary": A single clear sentence summarizing what this tweet says. If the tweet IS already one clear sentence, just clean it up slightly.
-2. "action_items": An array of actionable advice extracted from the tweet. Each item should be a concrete thing the reader could do. Return an empty array [] if there's nothing actionable (e.g. news, opinions, jokes).
+2. "action_items": An array of actionable items extracted from the tweet. Each item has "text" (a concrete thing the reader could do) and optionally "url" (a relevant URL from the tweet — e.g. a GitHub repo, tool, resource). Extract URLs mentioned in the tweet and attach them to the most relevant action item. Return an empty array [] if there's nothing actionable (e.g. news, opinions, jokes).
 3. "tags": 2-5 topic tags for categorization. Use lowercase, no #. Prefer matching from this list of existing tags when relevant: [${existingTags.slice(0, 50).join(", ")}]. Add new tags only if nothing existing fits.
 
 Return ONLY valid JSON, no markdown fences.`,

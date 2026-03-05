@@ -1076,6 +1076,22 @@ header nav .nav-add {
   color: var(--text-faint);
 }
 
+.action-item-link {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin-left: 6px;
+  white-space: nowrap;
+  text-decoration: none;
+  background: var(--tag-bg);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.action-item-link:hover {
+  text-decoration: underline;
+}
+
 .enrichment-tags {
   margin-bottom: 1rem;
 }

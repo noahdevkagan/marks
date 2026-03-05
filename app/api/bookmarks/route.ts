@@ -106,6 +106,7 @@ export async function POST(req: NextRequest) {
               summary: enrichment.summary,
               action_items: enrichment.action_items.map((a) => ({
                 text: a.text,
+                url: a.url || null,
                 completed: false,
                 created_at: new Date().toISOString(),
               })),

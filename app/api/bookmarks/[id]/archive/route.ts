@@ -217,7 +217,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
       let enrichment: {
         summary: string;
-        action_items: { text: string }[];
+        action_items: { text: string; url?: string }[];
         tags: string[];
       };
 
@@ -239,6 +239,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           summary: enrichment.summary,
           action_items: enrichment.action_items.map((a) => ({
             text: a.text,
+            url: a.url || null,
             completed: false,
             created_at: new Date().toISOString(),
           })),

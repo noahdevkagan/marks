@@ -4,6 +4,7 @@ import { ActionItemList } from "./action-item-list";
 
 type ActionItem = {
   text: string;
+  url?: string;
   completed: boolean;
   created_at: string;
 };

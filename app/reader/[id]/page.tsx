@@ -95,7 +95,21 @@ export default async function ReaderPage({ params }: Props) {
           </div>
         </header>
 
-        {bookmark.type === "video" ? (
+        {bookmark.type === "tweet" ? (
+          <div className="reader-tweet">
+            <blockquote className="reader-tweet-text">
+              {bookmark.description || bookmark.title}
+            </blockquote>
+            <a
+              href={bookmark.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="reader-tweet-link"
+            >
+              View on X &rarr;
+            </a>
+          </div>
+        ) : bookmark.type === "video" ? (
           <div className="reader-video">
             {bookmark.url.includes("youtube.com") || bookmark.url.includes("youtu.be") ? (
               <iframe

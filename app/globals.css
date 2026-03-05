@@ -764,6 +764,30 @@ header nav .nav-add {
   color: var(--accent);
 }
 
+.reader-tweet {
+  margin-top: 1.5rem;
+}
+
+.reader-tweet-text {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin: 0 0 1rem 0;
+  padding: 1rem 1.25rem;
+  border-left: 3px solid var(--accent);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.reader-tweet-link {
+  font-size: 0.8125rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.reader-tweet-link:hover {
+  text-decoration: underline;
+}
+
 .reader-video {
   margin-top: 1.5rem;
 }

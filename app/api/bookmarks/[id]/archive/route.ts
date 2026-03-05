@@ -26,6 +26,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // Tweets don't need article archiving — content is in description/type_metadata
+    if (bookmark.type === "tweet") {
+      return NextResponse.json({ ok: true, source: "tweet", word_count: 0, excerpt: "" });
+    }
+
     const body = await req.json().catch(() => ({}));
     const forceArchive = body.force_archive === true;
     const pageHtml = body.page_html as string | undefined;

@@ -24,6 +24,12 @@ window.addEventListener("message", async (event) => {
     }
     return;
   }
+
+  // Highlights page asks to start Kindle sync
+  if (event.data?.type === "marks:kindle-start-sync") {
+    chrome.runtime.sendMessage({ type: "kindle-start-sync" });
+    return;
+  }
 });
 
 // --- Messages FROM the background → page (React) ---
@@ -34,5 +40,15 @@ chrome.runtime.onMessage.addListener((msg) => {
       ok: msg.ok,
       error: msg.error,
     });
+  }
+  // Kindle sync messages → relay to page
+  if (msg.type === "marks:kindle-sync-data") {
+    window.postMessage({ type: "marks:kindle-sync-data", payload: msg.payload });
+  }
+  if (msg.type === "marks:kindle-sync-progress") {
+    window.postMessage({ type: "marks:kindle-sync-progress", message: msg.message });
+  }
+  if (msg.type === "marks:kindle-sync-error") {
+    window.postMessage({ type: "marks:kindle-sync-error", error: msg.error });
   }
 });

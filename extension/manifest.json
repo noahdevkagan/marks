@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Marks",
-  "version": "1.3.2",
-  "description": "Save bookmarks to Marks with auto-suggested tags",
+  "version": "1.4.0",
+  "description": "Save bookmarks to Marks with auto-suggested tags. Sync Kindle highlights.",
   "permissions": [
     "activeTab",
     "contextMenus",
@@ -26,13 +26,23 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://getmarks.sh/reader/*", "https://marks-drab.vercel.app/reader/*"],
+      "matches": [
+        "https://getmarks.sh/reader/*",
+        "https://getmarks.sh/highlights*",
+        "https://marks-drab.vercel.app/reader/*",
+        "https://marks-drab.vercel.app/highlights*"
+      ],
       "js": ["content-marks-main.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["https://getmarks.sh/reader/*", "https://marks-drab.vercel.app/reader/*"],
+      "matches": [
+        "https://getmarks.sh/reader/*",
+        "https://getmarks.sh/highlights*",
+        "https://marks-drab.vercel.app/reader/*",
+        "https://marks-drab.vercel.app/highlights*"
+      ],
       "js": ["content-marks.js"],
       "run_at": "document_idle"
     },
@@ -47,6 +57,11 @@
         "https://archive.md/*"
       ],
       "js": ["content-archive.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://read.amazon.com/notebook*"],
+      "js": ["content-kindle.js"],
       "run_at": "document_idle"
     }
   ],

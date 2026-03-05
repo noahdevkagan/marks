@@ -157,33 +157,54 @@ export default function KindlePage() {
         return `Synced ${days}d ago`;
       })();
 
-  // No data and no extension — show install prompt
+  // No data and no extension — show install instructions
   if (!data && !extensionReady) {
     return (
       <div className="container">
         <Nav />
-        <div className="empty">
-          <p style={{ marginBottom: "1rem" }}>
-            <strong>Kindle Highlights</strong>
+        <div className="kindle-install">
+          <h2 className="kindle-install-title">Kindle Highlights</h2>
+          <p className="kindle-install-subtitle">
+            Sync your Kindle highlights by installing the Marks extension.
           </p>
-          <p>
-            Install the{" "}
-            <a
-              href="https://github.com/crxnamja/marks"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Marks Chrome extension
-            </a>{" "}
-            to sync your Kindle highlights.
-          </p>
-          <p
-            style={{
-              fontSize: "0.8125rem",
-              color: "var(--text-faint)",
-              marginTop: "0.5rem",
-            }}
-          >
+
+          <ol className="kindle-install-steps">
+            <li>
+              <strong>Download the extension</strong>
+              <p>
+                <a
+                  href="/marks-extension.zip"
+                  download
+                  className="kindle-sync-btn"
+                >
+                  Download marks-extension.zip
+                </a>
+              </p>
+            </li>
+            <li>
+              <strong>Unzip the file</strong>
+              <p>Double-click the downloaded file to extract it.</p>
+            </li>
+            <li>
+              <strong>Open Chrome Extensions</strong>
+              <p>
+                Go to{" "}
+                <code className="kindle-install-code">
+                  chrome://extensions
+                </code>{" "}
+                and turn on <strong>Developer mode</strong> in the top right.
+              </p>
+            </li>
+            <li>
+              <strong>Load the extension</strong>
+              <p>
+                Click <strong>Load unpacked</strong> and select the unzipped
+                folder. Then reload this page.
+              </p>
+            </li>
+          </ol>
+
+          <p className="kindle-install-note">
             The extension uses your existing Amazon login. No passwords shared.
           </p>
         </div>

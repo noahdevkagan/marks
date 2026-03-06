@@ -8,6 +8,7 @@ import {
   extractMediaUrls,
 } from "@/lib/extract";
 import { createClient } from "@/lib/supabase-server";
+import { textToHtml } from "@/lib/pdf-html";
 import { uploadToStorage } from "@/lib/storage";
 import { enrichArticle, enrichTweet } from "@/lib/ai";
 
@@ -263,6 +264,40 @@ export async function POST(req: NextRequest, { params }: Params) {
       word_count: article.word_count,
       excerpt: article.excerpt,
     });
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+}
+
+/** Re-process archived PDF content through the improved textToHtml formatter */
+export async function PATCH(req: NextRequest, { params }: Params) {
+  try {
+    await requireUser();
+    const { id: idStr } = await params;
+    const id = parseInt(idStr, 10);
+
+    const supabase = await createClient();
+    const { data: archived } = await supabase
+      .from("archived_content")
+      .select("content_text, source")
+      .eq("bookmark_id", id)
+      .single();
+
+    if (!archived?.content_text) {
+      return NextResponse.json({ error: "No archived text to reprocess" }, { status: 404 });
+    }
+
+    const contentHtml = textToHtml(archived.content_text);
+    const { error } = await supabase
+      .from("archived_content")
+      .update({ content_html: contentHtml })
+      .eq("bookmark_id", id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, htmlLength: contentHtml.length });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

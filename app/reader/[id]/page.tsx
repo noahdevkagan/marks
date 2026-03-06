@@ -70,7 +70,13 @@ export default async function ReaderPage({ params }: Props) {
                 <span>&middot;</span>
               </>
             )}
-            <span>{new URL(bookmark.url).hostname.replace("www.", "")}</span>
+            <span>
+              {bookmark.type === "pdf" && bookmark.url.startsWith("pdf://")
+                ? (bookmark.type_metadata?.page_count
+                    ? `${bookmark.type_metadata.page_count} pages`
+                    : "uploaded")
+                : new URL(bookmark.url).hostname.replace("www.", "")}
+            </span>
             {archived && bookmark.type !== "video" && bookmark.type !== "image" && bookmark.type !== "tweet" && (
               <>
                 <span>&middot;</span>
@@ -81,7 +87,7 @@ export default async function ReaderPage({ params }: Props) {
                 </span>
               </>
             )}
-            {archived?.source && archived.source !== "readability" && archived.source !== "tweet" && (
+            {archived?.source && archived.source !== "readability" && archived.source !== "tweet" && archived.source !== "pdf" && (
               <>
                 <span>&middot;</span>
                 <span className="reader-source">
@@ -132,17 +138,24 @@ export default async function ReaderPage({ params }: Props) {
           </div>
         ) : bookmark.type === "pdf" ? (
           <div className="reader-pdf">
-            <iframe
-              src={`/api/pdf/${id}`}
-              title={bookmark.title || "PDF"}
-            />
+            {archived ? (
+              <div
+                className="reader-content"
+                dangerouslySetInnerHTML={{ __html: archived.content_html }}
+              />
+            ) : (
+              <iframe
+                src={`/api/pdf/${id}`}
+                title={bookmark.title || "PDF"}
+              />
+            )}
             <a
               href={`/api/pdf/${id}`}
               target="_blank"
               rel="noopener noreferrer"
               className="reader-pdf-download"
             >
-              Download PDF
+              View original PDF
             </a>
           </div>
         ) : bookmark.type === "image" ? (

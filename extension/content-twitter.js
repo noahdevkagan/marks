@@ -138,9 +138,22 @@
       if (src) mediaUrls.push(src);
     }
 
+    // Build contentHtml for regular tweets (preserves links)
+    let contentHtml = "";
+    if (textEl) {
+      contentHtml = extractTweetTextHtml(textEl);
+      // Append media images
+      for (const src of mediaUrls) {
+        if (src.includes("pbs.twimg.com")) {
+          contentHtml += '\n<img src="' + esc(cleanImgSrc(src)) + '" alt="Tweet media" />';
+        }
+      }
+    }
+
     return {
       url: tweetUrl,
       text,
+      contentHtml,
       handle,
       hashtags,
       mediaUrls,
@@ -148,33 +161,186 @@
     };
   }
 
-  /** Extract X Article (long-form) content */
+  // --- HTML helpers for rich extraction ---
+
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  /** Convert tweetText element to HTML preserving links */
+  function extractTweetTextHtml(textEl) {
+    let html = "";
+    for (const node of textEl.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        html += esc(node.textContent || "");
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node;
+        if (el.tagName === "A" || el.querySelector("a")) {
+          const a = el.tagName === "A" ? el : el.querySelector("a");
+          const href = a?.getAttribute("href") || "";
+          const text = el.textContent || "";
+          // Convert relative X links to absolute
+          const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
+          html += '<a href="' + esc(fullHref) + '">' + esc(text) + "</a>";
+        } else if (el.tagName === "IMG") {
+          // Emoji images — use alt text
+          html += el.alt || "";
+        } else if (el.tagName === "BR") {
+          html += "<br>";
+        } else {
+          html += esc(el.textContent || "");
+        }
+      }
+    }
+    return "<p>" + html + "</p>";
+  }
+
+  /** Walk up from a text node to stopAt, collecting bold/italic styles */
+  function getInlineStyle(node, stopAt) {
+    let isBold = false, isItalic = false;
+    let el = node.parentElement;
+    while (el && el !== stopAt) {
+      const style = el.getAttribute("style") || "";
+      if (style.includes("font-weight")) isBold = true;
+      if (style.includes("font-style")) isItalic = true;
+      el = el.parentElement;
+    }
+    return { isBold, isItalic };
+  }
+
+  /** Convert an element's text content to HTML preserving bold/italic spans */
+  function processInlineFormatting(el) {
+    let html = "";
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let node;
+    while (node = walker.nextNode()) {
+      const text = node.textContent;
+      if (!text) continue;
+      const { isBold, isItalic } = getInlineStyle(node, el);
+      let escaped = esc(text);
+      if (isBold && isItalic) escaped = "<strong><em>" + escaped + "</em></strong>";
+      else if (isBold) escaped = "<strong>" + escaped + "</strong>";
+      else if (isItalic) escaped = "<em>" + escaped + "</em>";
+      html += escaped;
+    }
+    return html;
+  }
+
+  /** Find the content container (div with many direct children) deep in the article view */
+  function findContentContainer(el, depth) {
+    if (depth > 10) return null;
+    for (const child of el.children) {
+      if (child.children.length > 10) return child;
+      const found = findContentContainer(child, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  /** Clean a pbs.twimg.com image URL to get the best quality version */
+  function cleanImgSrc(src) {
+    try {
+      const u = new URL(src);
+      return u.origin + u.pathname + "?format=jpg&name=large";
+    } catch { return src; }
+  }
+
+  /** Extract X Article (long-form) content as rich HTML */
   function extractXArticleData(article, articleReadView) {
     const titleEl = document.querySelector('[data-testid="twitter-article-title"]');
     const articleTitle = titleEl?.textContent?.trim() || "";
 
-    // Get body text via innerText, skip title + engagement metric lines
-    const raw = articleReadView.innerText;
-    const lines = raw.split("\n");
-    let startIdx = 0;
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line === articleTitle) { startIdx = i + 1; continue; }
-      if (startIdx > 0 && /^[\d,.]+[KMB]?$/.test(line) && line.length < 10) { startIdx = i + 1; continue; }
-      if (line.length > 20) break;
-      if (startIdx > 0) startIdx = i + 1;
-    }
-    const bodyText = lines.slice(startIdx).join("\n").trim();
-
     const { handle, tweetUrl } = extractHandleAndUrl(article);
     if (!tweetUrl) return null;
+
+    // Try rich HTML extraction from DOM structure
+    const container = findContentContainer(articleReadView, 0);
+    let contentHtml = "";
+    const mediaUrls = [];
+
+    if (container) {
+      const blocks = [];
+
+      // Header image (first child of articleReadView)
+      const headerImg = articleReadView.children[0]?.querySelector("img");
+      if (headerImg?.src?.includes("pbs.twimg.com")) {
+        const src = cleanImgSrc(headerImg.src);
+        blocks.push('<img src="' + esc(src) + '" alt="Article header" />');
+        mediaUrls.push(src);
+      }
+
+      for (const child of container.children) {
+        const tag = child.tagName;
+
+        // BLOCKQUOTE element
+        if (tag === "BLOCKQUOTE") {
+          blocks.push("<blockquote>" + esc(child.textContent?.trim() || "") + "</blockquote>");
+          continue;
+        }
+
+        // SECTION — may contain code block or image
+        if (tag === "SECTION") {
+          const pre = child.querySelector("pre");
+          if (pre) {
+            blocks.push("<pre><code>" + esc(pre.textContent || "") + "</code></pre>");
+            continue;
+          }
+          const img = child.querySelector("img");
+          if (img?.src?.includes("pbs.twimg.com")) {
+            const src = cleanImgSrc(img.src);
+            blocks.push('<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />');
+            mediaUrls.push(src);
+            continue;
+          }
+          // Fallback: treat section as paragraph
+          const text = child.textContent?.trim();
+          if (text) blocks.push("<p>" + esc(text) + "</p>");
+          continue;
+        }
+
+        // UL list
+        if (tag === "UL") {
+          const items = [...child.querySelectorAll("li")].map(
+            (li) => "<li>" + processInlineFormatting(li) + "</li>"
+          );
+          blocks.push("<ul>" + items.join("") + "</ul>");
+          continue;
+        }
+
+        // DIV — check for h2, img, or treat as paragraph
+        const h2 = child.querySelector("h2");
+        if (h2) {
+          blocks.push("<h2>" + esc(h2.textContent?.trim() || "") + "</h2>");
+          continue;
+        }
+
+        const img = child.querySelector("img");
+        if (img?.src?.includes("pbs.twimg.com")) {
+          const src = cleanImgSrc(img.src);
+          blocks.push('<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />');
+          mediaUrls.push(src);
+          continue;
+        }
+
+        // Regular paragraph with inline formatting
+        const text = child.textContent?.trim();
+        if (!text) continue;
+        blocks.push("<p>" + processInlineFormatting(child) + "</p>");
+      }
+
+      contentHtml = blocks.join("\n");
+    }
+
+    // Also get plain text for backward compat / description fallback
+    const bodyText = articleReadView.innerText?.trim() || "";
 
     return {
       url: tweetUrl,
       text: bodyText,
+      contentHtml,
       handle,
       hashtags: [],
-      mediaUrls: [],
+      mediaUrls,
       title: articleTitle || (handle ? `@${handle}` : bodyText.slice(0, 100)),
       isXArticle: true,
     };
@@ -197,6 +363,7 @@
           type_metadata: {
             author: tweet.handle,
             tweet_text: tweet.text,
+            content_html: tweet.contentHtml || "",
             media_urls: tweet.mediaUrls || [],
             ...(tweet.isXArticle && { x_article: true }),
           },

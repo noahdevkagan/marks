@@ -3,8 +3,9 @@ import { requireUser } from "@/lib/auth";
 import { createBookmark, updateBookmark } from "@/lib/db";
 import { uploadToStorage } from "@/lib/storage";
 import { createClient } from "@/lib/supabase-server";
+// Import from lib directly to avoid pdf-parse's debug mode test file issue on Vercel
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse");
+const pdfParse = require("pdf-parse/lib/pdf-parse");
 
 export const maxDuration = 60;
 

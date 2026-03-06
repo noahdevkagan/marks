@@ -36,9 +36,79 @@ const BULLET_RE = /^[•▪▸►●◦‣⁃∙○■□–—]\s/;
 const HYPHEN_BULLET_RE = /^-\s+\S/;
 const NUMBERED_ITEM_RE = /^\d+[\.\)]\s/;
 
+/**
+ * Pre-process raw PDF text to fix common extraction artifacts:
+ * - Strip standalone page numbers (replace with blank line)
+ * - Fix page numbers stuck to next line ("4Labor" → "\nLabor")
+ * - Insert paragraph breaks around bullet runs
+ * - Insert paragraph breaks before heading-like lines
+ */
+function preProcess(text: string): string {
+  const lines = text.split("\n");
+  const out: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+
+    // Replace standalone page numbers with blank lines
+    if (trimmed.length > 0 && /^\d{1,4}$/.test(trimmed)) {
+      out.push("");
+      continue;
+    }
+
+    // Fix page number stuck to next section text: "4Labor market" → "Labor market"
+    // Pattern: 1-3 digits immediately followed by uppercase + 2+ lowercase (avoids "3D", "2nd")
+    let line = lines[i];
+    const stuck = trimmed.match(/^(\d{1,3})([A-Z][a-z]{2,})/);
+    if (stuck) {
+      line = trimmed.slice(stuck[1].length);
+      out.push(""); // insert paragraph break
+    }
+
+    const isBullet =
+      BULLET_RE.test(trimmed) || HYPHEN_BULLET_RE.test(trimmed);
+    const prevTrimmed =
+      out.length > 0 ? out[out.length - 1].trim() : "";
+    const prevIsBullet =
+      prevTrimmed !== "" &&
+      (BULLET_RE.test(prevTrimmed) || HYPHEN_BULLET_RE.test(prevTrimmed));
+
+    // Insert break before first bullet in a run (previous line is regular text)
+    if (isBullet && prevTrimmed && !prevIsBullet) {
+      out.push("");
+    }
+
+    // Insert break when transitioning from bullets back to regular text
+    if (!isBullet && trimmed && prevIsBullet) {
+      out.push("");
+    }
+
+    // Insert break before heading-like lines that follow regular text
+    if (
+      trimmed &&
+      !isBullet &&
+      prevTrimmed &&
+      !prevIsBullet &&
+      isHeading(trimmed, 1)
+    ) {
+      out.push("");
+    }
+
+    out.push(line);
+  }
+
+  return out.join("\n");
+}
+
 /** Convert extracted PDF plain text into structured HTML */
 export function textToHtml(text: string): string {
-  const cleaned = text.replace(/\f/g, "\n\n").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  // Normalize line endings and form feeds, then fix PDF artifacts
+  const normalized = text
+    .replace(/\f/g, "\n\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+  const cleaned = preProcess(normalized);
+
   const blocks = cleaned.split(/\n\s*\n/);
   const html: string[] = [];
 
@@ -49,12 +119,12 @@ export function textToHtml(text: string): string {
       .filter((l) => l.length > 0);
     if (lines.length === 0) continue;
 
-    // Skip standalone page numbers
+    // Skip standalone page numbers (backup check after pre-processing)
     if (lines.length === 1 && /^\d{1,4}$/.test(lines[0])) continue;
 
     // Detect bullet list (all lines start with bullet characters)
     const allBullets =
-      lines.length > 1 &&
+      lines.length >= 1 &&
       lines.every((l) => BULLET_RE.test(l) || HYPHEN_BULLET_RE.test(l));
     if (allBullets) {
       const items = lines.map(
@@ -95,6 +165,26 @@ export function textToHtml(text: string): string {
       continue;
     }
 
+    // Mixed: bullets followed by trailing text (reverse of above)
+    const lastBulletIdx = findLastIndex(lines, (l) =>
+      BULLET_RE.test(l) || HYPHEN_BULLET_RE.test(l),
+    );
+    if (
+      lastBulletIdx >= 0 &&
+      lastBulletIdx < lines.length - 1 &&
+      lines
+        .slice(0, lastBulletIdx + 1)
+        .every((l) => BULLET_RE.test(l) || HYPHEN_BULLET_RE.test(l))
+    ) {
+      const items = lines.slice(0, lastBulletIdx + 1).map(
+        (l) =>
+          `<li>${esc(l.replace(/^[•▪▸►●◦‣⁃∙○■□–—-]\s*/, ""))}</li>`,
+      );
+      const trail = joinLines(lines.slice(lastBulletIdx + 1));
+      html.push(`<ul>\n${items.join("\n")}\n</ul>\n<p>${esc(trail)}</p>`);
+      continue;
+    }
+
     // Join lines into flowing text (removes arbitrary PDF line breaks)
     const joined = joinLines(lines);
     if (!joined) continue;
@@ -123,4 +213,12 @@ export function textToHtml(text: string): string {
   }
 
   return html.join("\n");
+}
+
+/** Array.findLastIndex polyfill */
+function findLastIndex<T>(arr: T[], pred: (v: T) => boolean): number {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (pred(arr[i])) return i;
+  }
+  return -1;
 }

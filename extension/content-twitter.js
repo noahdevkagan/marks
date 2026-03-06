@@ -70,24 +70,17 @@
     saveTweetToMarks(tweetData);
   }
 
-  function extractTweetData(article) {
-    // Get tweet text
-    const textEl = article.querySelector('[data-testid="tweetText"]');
-    const text = textEl?.textContent?.trim() || "";
-
-    // Get author handle
-    const handleEl = article.querySelector('a[href^="/"][role="link"] span');
-    const allLinks = article.querySelectorAll('a[role="link"]');
+  /** Extract handle and tweet URL from an article element */
+  function extractHandleAndUrl(article) {
     let handle = "";
     let tweetUrl = "";
+    const allLinks = article.querySelectorAll('a[role="link"]');
 
     for (const link of allLinks) {
       const href = link.getAttribute("href") || "";
-      // Match /@username pattern
-      if (href.match(/^\/\w+$/) && !href.includes("/")) {
+      if (href.match(/^\/\w+$/) && !handle) {
         handle = href.slice(1);
       }
-      // Match /username/status/1234 pattern
       if (href.match(/\/\w+\/status\/\d+/)) {
         tweetUrl = `https://x.com${href}`;
       }
@@ -101,13 +94,27 @@
         if (href?.includes("/status/")) {
           tweetUrl = `https://x.com${href}`;
           if (!handle) {
-            const parts = href.split("/");
-            handle = parts[1] || "";
+            handle = href.split("/")[1] || "";
           }
         }
       }
     }
 
+    return { handle, tweetUrl };
+  }
+
+  function extractTweetData(article) {
+    // Check for X Article (long-form content)
+    const articleReadView = document.querySelector('[data-testid="twitterArticleReadView"]');
+    if (articleReadView) {
+      return extractXArticleData(article, articleReadView);
+    }
+
+    // Regular tweet extraction
+    const textEl = article.querySelector('[data-testid="tweetText"]');
+    const text = textEl?.textContent?.trim() || "";
+
+    const { handle, tweetUrl } = extractHandleAndUrl(article);
     if (!tweetUrl) return null;
 
     // Extract hashtags
@@ -141,6 +148,38 @@
     };
   }
 
+  /** Extract X Article (long-form) content */
+  function extractXArticleData(article, articleReadView) {
+    const titleEl = document.querySelector('[data-testid="twitter-article-title"]');
+    const articleTitle = titleEl?.textContent?.trim() || "";
+
+    // Get body text via innerText, skip title + engagement metric lines
+    const raw = articleReadView.innerText;
+    const lines = raw.split("\n");
+    let startIdx = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line === articleTitle) { startIdx = i + 1; continue; }
+      if (startIdx > 0 && /^[\d,.]+[KMB]?$/.test(line) && line.length < 10) { startIdx = i + 1; continue; }
+      if (line.length > 20) break;
+      if (startIdx > 0) startIdx = i + 1;
+    }
+    const bodyText = lines.slice(startIdx).join("\n").trim();
+
+    const { handle, tweetUrl } = extractHandleAndUrl(article);
+    if (!tweetUrl) return null;
+
+    return {
+      url: tweetUrl,
+      text: bodyText,
+      handle,
+      hashtags: [],
+      mediaUrls: [],
+      title: articleTitle || (handle ? `@${handle}` : bodyText.slice(0, 100)),
+      isXArticle: true,
+    };
+  }
+
   async function saveTweetToMarks(tweet) {
     const tags = [...new Set([...tweet.hashtags, "twitter"])];
 
@@ -159,6 +198,7 @@
             author: tweet.handle,
             tweet_text: tweet.text,
             media_urls: tweet.mediaUrls || [],
+            ...(tweet.isXArticle && { x_article: true }),
           },
         },
       });

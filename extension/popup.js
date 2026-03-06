@@ -79,6 +79,14 @@ loginForm.addEventListener("submit", async (e) => {
 
 // --- Save ---
 
+function isTweetUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace("www.", "");
+    return (host === "x.com" || host === "twitter.com") && u.pathname.includes("/status/");
+  } catch { return false; }
+}
+
 async function showSaveView() {
   saveView.style.display = "block";
 
@@ -87,24 +95,69 @@ async function showSaveView() {
   if (tab) {
     document.getElementById("url").value = tab.url || "";
 
-    // Try og:title first (better for paywalled pages), fall back to tab.title
-    let title = tab.title || "";
-    if (tab.id) {
+    // For tweet/article pages, extract full text from DOM
+    if (tab.id && tab.url && isTweetUrl(tab.url)) {
       try {
         const results = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            const og = document.querySelector('meta[property="og:title"]');
-            return og?.getAttribute("content") || "";
+            // Check for X Article
+            const articleReadView = document.querySelector('[data-testid="twitterArticleReadView"]');
+            if (articleReadView) {
+              const titleEl = document.querySelector('[data-testid="twitter-article-title"]');
+              const articleTitle = titleEl?.textContent?.trim() || "";
+              const raw = articleReadView.innerText;
+              const lines = raw.split("\n");
+              let startIdx = 0;
+              for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line === articleTitle) { startIdx = i + 1; continue; }
+                if (startIdx > 0 && /^[\d,.]+[KMB]?$/.test(line) && line.length < 10) { startIdx = i + 1; continue; }
+                if (line.length > 20) break;
+                if (startIdx > 0) startIdx = i + 1;
+              }
+              const bodyText = lines.slice(startIdx).join("\n").trim();
+              return { title: articleTitle, text: bodyText };
+            }
+            // Regular tweet
+            const article = document.querySelector("article");
+            const textEl = article?.querySelector('[data-testid="tweetText"]');
+            const text = textEl?.textContent?.trim() || "";
+            return { title: "", text };
           },
         });
-        const ogTitle = results?.[0]?.result;
-        if (ogTitle && ogTitle.length > 3) title = ogTitle;
+        const tweetData = results?.[0]?.result;
+        if (tweetData?.text) {
+          document.getElementById("description").value = tweetData.text;
+          if (tweetData.title) {
+            document.getElementById("title").value = tweetData.title;
+          } else {
+            document.getElementById("title").value = tab.title || "";
+          }
+        }
       } catch {
-        // scripting may fail on chrome:// pages etc — use tab.title
+        document.getElementById("title").value = tab.title || "";
       }
+    } else {
+      // Non-tweet: try og:title for better titles on paywalled pages
+      let title = tab.title || "";
+      if (tab.id) {
+        try {
+          const results = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => {
+              const og = document.querySelector('meta[property="og:title"]');
+              return og?.getAttribute("content") || "";
+            },
+          });
+          const ogTitle = results?.[0]?.result;
+          if (ogTitle && ogTitle.length > 3) title = ogTitle;
+        } catch {
+          // scripting may fail on chrome:// pages etc — use tab.title
+        }
+      }
+      document.getElementById("title").value = title;
     }
-    document.getElementById("title").value = title;
   }
 
   // Fetch suggested tags (pass title for better AI context on SPAs like x.com)

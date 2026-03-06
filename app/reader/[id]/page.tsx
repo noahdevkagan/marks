@@ -99,14 +99,21 @@ export default async function ReaderPage({ params }: Props) {
         </header>
 
         {bookmark.type === "tweet" ? (() => {
+          const contentHtml = bookmark.type_metadata?.content_html
+            ? String(bookmark.type_metadata.content_html)
+            : "";
           const tweetText =
             bookmark.description ||
             (bookmark.type_metadata?.tweet_text ? String(bookmark.type_metadata.tweet_text) : "") ||
             bookmark.title;
-          const isLong = tweetText.length > 500;
           return (
             <div className="reader-tweet">
-              {isLong ? (
+              {contentHtml ? (
+                <div
+                  className="reader-content"
+                  dangerouslySetInnerHTML={{ __html: contentHtml }}
+                />
+              ) : tweetText.length > 500 ? (
                 <div
                   className="reader-content"
                   dangerouslySetInnerHTML={{
@@ -119,7 +126,6 @@ export default async function ReaderPage({ params }: Props) {
                           .replace(/&/g, "&amp;")
                           .replace(/</g, "&lt;")
                           .replace(/>/g, "&gt;");
-                        // Detect headings: short lines without ending punctuation
                         if (t.length < 80 && !/[.!?:,;"]$/.test(t)) {
                           return `<h3>${escaped}</h3>`;
                         }

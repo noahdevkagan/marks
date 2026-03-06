@@ -14,6 +14,7 @@ const suggestedTagsEl = document.getElementById("suggested-tags");
 
 let tags = [];
 let config = {};
+let tweetMeta = null; // Populated when on a tweet page
 
 // Init
 document.addEventListener("DOMContentLoaded", async () => {
@@ -95,35 +96,152 @@ async function showSaveView() {
   if (tab) {
     document.getElementById("url").value = tab.url || "";
 
-    // For tweet/article pages, extract full text from DOM
+    // For tweet/article pages, extract full text + HTML from DOM
     if (tab.id && tab.url && isTweetUrl(tab.url)) {
       try {
         const results = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
+            function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+            function cleanImgSrc(src) {
+              try { const u = new URL(src); return u.origin + u.pathname + "?format=jpg&name=large"; }
+              catch { return src; }
+            }
+            function getInlineStyle(node, stopAt) {
+              let isBold = false, isItalic = false;
+              let el = node.parentElement;
+              while (el && el !== stopAt) {
+                const style = el.getAttribute("style") || "";
+                if (style.includes("font-weight")) isBold = true;
+                if (style.includes("font-style")) isItalic = true;
+                el = el.parentElement;
+              }
+              return { isBold, isItalic };
+            }
+            function processInline(el) {
+              let html = "";
+              const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+              let node;
+              while (node = walker.nextNode()) {
+                const text = node.textContent;
+                if (!text) continue;
+                const { isBold, isItalic } = getInlineStyle(node, el);
+                let escaped = esc(text);
+                if (isBold && isItalic) escaped = "<strong><em>" + escaped + "</em></strong>";
+                else if (isBold) escaped = "<strong>" + escaped + "</strong>";
+                else if (isItalic) escaped = "<em>" + escaped + "</em>";
+                html += escaped;
+              }
+              return html;
+            }
+            function findContentContainer(el, depth) {
+              if (depth > 10) return null;
+              for (const child of el.children) {
+                if (child.children.length > 10) return child;
+                const found = findContentContainer(child, depth + 1);
+                if (found) return found;
+              }
+              return null;
+            }
+            function getHandle() {
+              const article = document.querySelector("article");
+              if (!article) return "";
+              const links = article.querySelectorAll('a[role="link"]');
+              for (const link of links) {
+                const href = link.getAttribute("href") || "";
+                if (href.match(/^\/\w+$/)) return href.slice(1);
+              }
+              return "";
+            }
+
             // Check for X Article
             const articleReadView = document.querySelector('[data-testid="twitterArticleReadView"]');
             if (articleReadView) {
               const titleEl = document.querySelector('[data-testid="twitter-article-title"]');
               const articleTitle = titleEl?.textContent?.trim() || "";
-              const raw = articleReadView.innerText;
-              const lines = raw.split("\n");
-              let startIdx = 0;
-              for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line === articleTitle) { startIdx = i + 1; continue; }
-                if (startIdx > 0 && /^[\d,.]+[KMB]?$/.test(line) && line.length < 10) { startIdx = i + 1; continue; }
-                if (line.length > 20) break;
-                if (startIdx > 0) startIdx = i + 1;
+              const handle = getHandle();
+              const container = findContentContainer(articleReadView, 0);
+              let contentHtml = "";
+              const mediaUrls = [];
+              if (container) {
+                const blocks = [];
+                const headerImg = articleReadView.children[0]?.querySelector("img");
+                if (headerImg?.src?.includes("pbs.twimg.com")) {
+                  const src = cleanImgSrc(headerImg.src);
+                  blocks.push('<img src="' + esc(src) + '" alt="Article header" />');
+                  mediaUrls.push(src);
+                }
+                for (const child of container.children) {
+                  const tag = child.tagName;
+                  if (tag === "BLOCKQUOTE") { blocks.push("<blockquote>" + esc(child.textContent?.trim() || "") + "</blockquote>"); continue; }
+                  if (tag === "SECTION") {
+                    const pre = child.querySelector("pre");
+                    if (pre) { blocks.push("<pre><code>" + esc(pre.textContent || "") + "</code></pre>"); continue; }
+                    const img = child.querySelector("img");
+                    if (img?.src?.includes("pbs.twimg.com")) {
+                      const src = cleanImgSrc(img.src);
+                      blocks.push('<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />');
+                      mediaUrls.push(src);
+                      continue;
+                    }
+                    const text = child.textContent?.trim();
+                    if (text) blocks.push("<p>" + esc(text) + "</p>");
+                    continue;
+                  }
+                  if (tag === "UL") {
+                    const items = [...child.querySelectorAll("li")].map(li => "<li>" + processInline(li) + "</li>");
+                    blocks.push("<ul>" + items.join("") + "</ul>");
+                    continue;
+                  }
+                  const h2 = child.querySelector("h2");
+                  if (h2) { blocks.push("<h2>" + esc(h2.textContent?.trim() || "") + "</h2>"); continue; }
+                  const img = child.querySelector("img");
+                  if (img?.src?.includes("pbs.twimg.com")) {
+                    const src = cleanImgSrc(img.src);
+                    blocks.push('<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />');
+                    mediaUrls.push(src);
+                    continue;
+                  }
+                  const text = child.textContent?.trim();
+                  if (!text) continue;
+                  blocks.push("<p>" + processInline(child) + "</p>");
+                }
+                contentHtml = blocks.join("\n");
               }
-              const bodyText = lines.slice(startIdx).join("\n").trim();
-              return { title: articleTitle, text: bodyText };
+              const bodyText = articleReadView.innerText?.trim() || "";
+              return { title: articleTitle, text: bodyText, contentHtml, handle, isArticle: true, mediaUrls };
             }
             // Regular tweet
             const article = document.querySelector("article");
             const textEl = article?.querySelector('[data-testid="tweetText"]');
             const text = textEl?.textContent?.trim() || "";
-            return { title: "", text };
+            const handle = getHandle();
+            let contentHtml = "";
+            if (textEl) {
+              let html = "";
+              for (const node of textEl.childNodes) {
+                if (node.nodeType === Node.TEXT_NODE) { html += esc(node.textContent || ""); }
+                else if (node.nodeType === Node.ELEMENT_NODE) {
+                  const el = node;
+                  if (el.tagName === "A" || el.querySelector("a")) {
+                    const a = el.tagName === "A" ? el : el.querySelector("a");
+                    const href = a?.getAttribute("href") || "";
+                    const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
+                    html += '<a href="' + esc(fullHref) + '">' + esc(el.textContent || "") + "</a>";
+                  } else if (el.tagName === "IMG") { html += el.alt || ""; }
+                  else if (el.tagName === "BR") { html += "<br>"; }
+                  else { html += esc(el.textContent || ""); }
+                }
+              }
+              contentHtml = "<p>" + html + "</p>";
+              const imgs = article?.querySelectorAll('img[src*="pbs.twimg.com"]') || [];
+              for (const img of imgs) {
+                if (!img.src.includes("profile_images")) {
+                  contentHtml += '\n<img src="' + esc(cleanImgSrc(img.src)) + '" alt="Tweet media" />';
+                }
+              }
+            }
+            return { title: "", text, contentHtml, handle, isArticle: false };
           },
         });
         const tweetData = results?.[0]?.result;
@@ -134,6 +252,14 @@ async function showSaveView() {
           } else {
             document.getElementById("title").value = tab.title || "";
           }
+          // Store tweet metadata for save
+          tweetMeta = {
+            author: tweetData.handle || "",
+            tweet_text: tweetData.text,
+            content_html: tweetData.contentHtml || "",
+            media_urls: tweetData.mediaUrls || [],
+            ...(tweetData.isArticle && { x_article: true }),
+          };
         }
       } catch {
         document.getElementById("title").value = tab.title || "";
@@ -254,6 +380,10 @@ saveForm.addEventListener("submit", async (e) => {
     description: document.getElementById("description").value,
     tags,
     is_read: !document.getElementById("read-later").checked,
+    ...(tweetMeta && {
+      type: "tweet",
+      type_metadata: tweetMeta,
+    }),
   };
 
   const result = await chrome.runtime.sendMessage({ type: "save-bookmark", data });

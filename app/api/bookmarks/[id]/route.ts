@@ -31,6 +31,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
       is_read: body.is_read,
       is_archived: body.is_archived,
       tags: body.tags,
+      ...(body.type !== undefined && { type: body.type }),
+      ...(body.type_metadata !== undefined && { type_metadata: body.type_metadata }),
     });
 
     if (!bookmark) {

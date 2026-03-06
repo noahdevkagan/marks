@@ -133,6 +133,8 @@ export async function updateBookmark(
     is_read?: boolean;
     is_archived?: boolean;
     tags?: string[];
+    type?: string;
+    type_metadata?: Record<string, unknown>;
   },
 ): Promise<BookmarkWithTags | null> {
   const { tags, ...fields } = input;

@@ -36,11 +36,27 @@ const BULLET_RE = /^[•▪▸►●◦‣⁃∙○■□–—]\s/;
 const HYPHEN_BULLET_RE = /^-\s+\S/;
 const NUMBERED_ITEM_RE = /^\d+[\.\)]\s/;
 
+function isBulletLine(line: string): boolean {
+  return BULLET_RE.test(line) || HYPHEN_BULLET_RE.test(line);
+}
+
+function stripBulletPrefix(line: string): string {
+  return line.replace(/^[•▪▸►●◦‣⁃∙○■□–—-]\s*/, "");
+}
+
+/** Check if a line is a continuation of the previous bullet/item (not a new element) */
+function isContinuation(line: string, prevLine: string): boolean {
+  // Starts with lowercase or opening paren → continuation
+  if (/^[a-z(]/.test(line)) return true;
+  // Previous line doesn't end with sentence-final punctuation → continuation
+  if (prevLine && !/[.!?]$/.test(prevLine)) return true;
+  return false;
+}
+
 /**
  * Pre-process raw PDF text to fix common extraction artifacts:
  * - Strip standalone page numbers (replace with blank line)
  * - Fix page numbers stuck to next line ("4Labor" → "\nLabor")
- * - Insert paragraph breaks around bullet runs
  * - Insert paragraph breaks before heading-like lines
  */
 function preProcess(text: string): string {
@@ -65,30 +81,14 @@ function preProcess(text: string): string {
       out.push(""); // insert paragraph break
     }
 
-    const isBullet =
-      BULLET_RE.test(trimmed) || HYPHEN_BULLET_RE.test(trimmed);
     const prevTrimmed =
       out.length > 0 ? out[out.length - 1].trim() : "";
-    const prevIsBullet =
-      prevTrimmed !== "" &&
-      (BULLET_RE.test(prevTrimmed) || HYPHEN_BULLET_RE.test(prevTrimmed));
-
-    // Insert break before first bullet in a run (previous line is regular text)
-    if (isBullet && prevTrimmed && !prevIsBullet) {
-      out.push("");
-    }
-
-    // Insert break when transitioning from bullets back to regular text
-    if (!isBullet && trimmed && prevIsBullet) {
-      out.push("");
-    }
 
     // Insert break before heading-like lines that follow regular text
     if (
       trimmed &&
-      !isBullet &&
+      !isBulletLine(trimmed) &&
       prevTrimmed &&
-      !prevIsBullet &&
       isHeading(trimmed, 1)
     ) {
       out.push("");
@@ -98,6 +98,61 @@ function preProcess(text: string): string {
   }
 
   return out.join("\n");
+}
+
+/**
+ * Parse a block that contains bullet lines into structured segments:
+ * intro paragraphs, bullet items (with multi-line continuations), trailing paragraphs.
+ * Returns null if the block has no bullets.
+ */
+function parseBulletBlock(
+  lines: string[],
+): { intro: string[]; items: string[][]; trail: string[] } | null {
+  const firstBulletIdx = lines.findIndex((l) => isBulletLine(l));
+  if (firstBulletIdx < 0) return null;
+
+  const intro = lines.slice(0, firstBulletIdx);
+  const items: string[][] = [];
+  const trail: string[] = [];
+  let currentItem: string[] = [];
+  let pastBullets = false;
+
+  for (let i = firstBulletIdx; i < lines.length; i++) {
+    if (pastBullets) {
+      trail.push(lines[i]);
+      continue;
+    }
+
+    if (isBulletLine(lines[i])) {
+      // Start a new bullet item
+      if (currentItem.length > 0) {
+        items.push(currentItem);
+      }
+      currentItem = [stripBulletPrefix(lines[i])];
+    } else {
+      // Non-bullet line: continuation of current item, or start of trailing text?
+      const prevLine = currentItem.length > 0 ? currentItem[currentItem.length - 1] : "";
+      if (currentItem.length > 0 && isContinuation(lines[i], prevLine)) {
+        currentItem.push(lines[i]);
+      } else {
+        // End of bullet section — save current item and start trailing text
+        if (currentItem.length > 0) {
+          items.push(currentItem);
+          currentItem = [];
+        }
+        pastBullets = true;
+        trail.push(lines[i]);
+      }
+    }
+  }
+
+  // Save last bullet item
+  if (currentItem.length > 0) {
+    items.push(currentItem);
+  }
+
+  if (items.length === 0) return null;
+  return { intro, items, trail };
 }
 
 /** Convert extracted PDF plain text into structured HTML */
@@ -122,19 +177,6 @@ export function textToHtml(text: string): string {
     // Skip standalone page numbers (backup check after pre-processing)
     if (lines.length === 1 && /^\d{1,4}$/.test(lines[0])) continue;
 
-    // Detect bullet list (all lines start with bullet characters)
-    const allBullets =
-      lines.length >= 1 &&
-      lines.every((l) => BULLET_RE.test(l) || HYPHEN_BULLET_RE.test(l));
-    if (allBullets) {
-      const items = lines.map(
-        (l) =>
-          `<li>${esc(l.replace(/^[•▪▸►●◦‣⁃∙○■□–—-]\s*/, ""))}</li>`,
-      );
-      html.push(`<ul>\n${items.join("\n")}\n</ul>`);
-      continue;
-    }
-
     // Detect numbered list (all lines start with "1." / "2)" etc.)
     const allNumbered =
       lines.length > 1 && lines.every((l) => NUMBERED_ITEM_RE.test(l));
@@ -146,42 +188,30 @@ export function textToHtml(text: string): string {
       continue;
     }
 
-    // Mixed: intro paragraph followed by bullet items
-    const firstBulletIdx = lines.findIndex(
-      (l) => BULLET_RE.test(l) || HYPHEN_BULLET_RE.test(l),
-    );
-    if (
-      firstBulletIdx > 0 &&
-      lines
-        .slice(firstBulletIdx)
-        .every((l) => BULLET_RE.test(l) || HYPHEN_BULLET_RE.test(l))
-    ) {
-      const intro = joinLines(lines.slice(0, firstBulletIdx));
-      const items = lines.slice(firstBulletIdx).map(
-        (l) =>
-          `<li>${esc(l.replace(/^[•▪▸►●◦‣⁃∙○■□–—-]\s*/, ""))}</li>`,
-      );
-      html.push(`<p>${esc(intro)}</p>\n<ul>\n${items.join("\n")}\n</ul>`);
-      continue;
-    }
+    // Try to parse as a block containing bullets (with multi-line support)
+    const bulletParsed = parseBulletBlock(lines);
+    if (bulletParsed) {
+      // Render intro paragraph if present
+      if (bulletParsed.intro.length > 0) {
+        const introText = joinLines(bulletParsed.intro);
+        if (introText) {
+          html.push(`<p>${esc(introText)}</p>`);
+        }
+      }
 
-    // Mixed: bullets followed by trailing text (reverse of above)
-    const lastBulletIdx = findLastIndex(lines, (l) =>
-      BULLET_RE.test(l) || HYPHEN_BULLET_RE.test(l),
-    );
-    if (
-      lastBulletIdx >= 0 &&
-      lastBulletIdx < lines.length - 1 &&
-      lines
-        .slice(0, lastBulletIdx + 1)
-        .every((l) => BULLET_RE.test(l) || HYPHEN_BULLET_RE.test(l))
-    ) {
-      const items = lines.slice(0, lastBulletIdx + 1).map(
-        (l) =>
-          `<li>${esc(l.replace(/^[•▪▸►●◦‣⁃∙○■□–—-]\s*/, ""))}</li>`,
+      // Render bullet list — each item's lines are joined into flowing text
+      const listItems = bulletParsed.items.map(
+        (itemLines) => `<li>${esc(joinLines(itemLines))}</li>`,
       );
-      const trail = joinLines(lines.slice(lastBulletIdx + 1));
-      html.push(`<ul>\n${items.join("\n")}\n</ul>\n<p>${esc(trail)}</p>`);
+      html.push(`<ul>\n${listItems.join("\n")}\n</ul>`);
+
+      // Render trailing paragraph if present
+      if (bulletParsed.trail.length > 0) {
+        const trailText = joinLines(bulletParsed.trail);
+        if (trailText) {
+          html.push(`<p>${esc(trailText)}</p>`);
+        }
+      }
       continue;
     }
 
@@ -213,12 +243,4 @@ export function textToHtml(text: string): string {
   }
 
   return html.join("\n");
-}
-
-/** Array.findLastIndex polyfill */
-function findLastIndex<T>(arr: T[], pred: (v: T) => boolean): number {
-  for (let i = arr.length - 1; i >= 0; i--) {
-    if (pred(arr[i])) return i;
-  }
-  return -1;
 }

@@ -1,5 +1,56 @@
 const API_URL = "https://marks-drab.vercel.app";
 
+function isTweetUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace("www.", "");
+    return (host === "x.com" || host === "twitter.com") && u.pathname.includes("/status/");
+  } catch { return false; }
+}
+
+/** Injected into the page to extract tweet or X Article text */
+function extractTweetContentFromPage() {
+  // Check for X Article (long-form)
+  const articleReadView = document.querySelector('[data-testid="twitterArticleReadView"]');
+  if (articleReadView) {
+    const titleEl = document.querySelector('[data-testid="twitter-article-title"]');
+    const articleTitle = titleEl?.textContent?.trim() || "";
+    const raw = articleReadView.innerText;
+    const lines = raw.split("\n");
+    let startIdx = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line === articleTitle) { startIdx = i + 1; continue; }
+      if (startIdx > 0 && /^[\d,.]+[KMB]?$/.test(line) && line.length < 10) { startIdx = i + 1; continue; }
+      if (line.length > 20) break;
+      if (startIdx > 0) startIdx = i + 1;
+    }
+    const bodyText = lines.slice(startIdx).join("\n").trim();
+    let handle = "";
+    const article = document.querySelector("article");
+    if (article) {
+      const links = article.querySelectorAll('a[role="link"]');
+      for (const link of links) {
+        const href = link.getAttribute("href") || "";
+        if (href.match(/^\/\w+$/)) { handle = href.slice(1); break; }
+      }
+    }
+    return { text: bodyText, title: articleTitle, handle, isArticle: true };
+  }
+  // Regular tweet
+  const article = document.querySelector("article");
+  if (!article) return null;
+  const textEl = article.querySelector('[data-testid="tweetText"]');
+  const text = textEl?.textContent?.trim() || "";
+  let handle = "";
+  const links = article.querySelectorAll('a[role="link"]');
+  for (const link of links) {
+    const href = link.getAttribute("href") || "";
+    if (href.match(/^\/\w+$/)) { handle = href.slice(1); break; }
+  }
+  return { text, title: "", handle, isArticle: false };
+}
+
 // Context menu setup
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -27,20 +78,52 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   if (!url) return;
 
-  // Try og:title for better titles on paywalled pages
+  // Build save payload — extract tweet/article text if on x.com
+  let saveBody = { url, title: title || url, is_read: false };
+
   if (info.menuItemId === "save-page" && tab?.id) {
-    try {
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => {
-          const og = document.querySelector('meta[property="og:title"]');
-          return og?.getAttribute("content") || "";
-        },
-      });
-      const ogTitle = results?.[0]?.result;
-      if (ogTitle && ogTitle.length > 3) title = ogTitle;
-    } catch {
-      // scripting may fail on some pages
+    // For tweets, extract full text from the page DOM
+    if (isTweetUrl(url)) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: extractTweetContentFromPage,
+        });
+        const data = results?.[0]?.result;
+        if (data?.text) {
+          saveBody = {
+            url,
+            title: data.title || title || url,
+            description: data.text,
+            is_read: false,
+            type: "tweet",
+            type_metadata: {
+              author: data.handle,
+              tweet_text: data.text,
+              ...(data.isArticle && { x_article: true }),
+            },
+          };
+        }
+      } catch {
+        // Fall through to default save
+      }
+    }
+
+    // Try og:title for better titles on non-tweet pages
+    if (!saveBody.description) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const og = document.querySelector('meta[property="og:title"]');
+            return og?.getAttribute("content") || "";
+          },
+        });
+        const ogTitle = results?.[0]?.result;
+        if (ogTitle && ogTitle.length > 3) saveBody.title = ogTitle;
+      } catch {
+        // scripting may fail on some pages
+      }
     }
   }
 
@@ -52,7 +135,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ url, title: title || url, is_read: false }),
+      body: JSON.stringify(saveBody),
     });
 
     if (res.status === 401) {
@@ -67,7 +150,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ url, title: title || url, is_read: false }),
+        body: JSON.stringify(saveBody),
       });
     }
 

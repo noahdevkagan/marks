@@ -77,7 +77,7 @@ export default async function ReaderPage({ params }: Props) {
                     : "uploaded")
                 : new URL(bookmark.url).hostname.replace("www.", "")}
             </span>
-            {archived && bookmark.type !== "video" && bookmark.type !== "image" && bookmark.type !== "tweet" && (
+            {archived && bookmark.type !== "video" && bookmark.type !== "image" && (
               <>
                 <span>&middot;</span>
                 <span>{archived.word_count?.toLocaleString()} words</span>
@@ -98,21 +98,51 @@ export default async function ReaderPage({ params }: Props) {
           </div>
         </header>
 
-        {bookmark.type === "tweet" ? (
-          <div className="reader-tweet">
-            <blockquote className="reader-tweet-text">
-              {bookmark.description || bookmark.title}
-            </blockquote>
-            <a
-              href={bookmark.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="reader-tweet-link"
-            >
-              View on X &rarr;
-            </a>
-          </div>
-        ) : bookmark.type === "video" ? (
+        {bookmark.type === "tweet" ? (() => {
+          const tweetText =
+            bookmark.description ||
+            (bookmark.type_metadata?.tweet_text ? String(bookmark.type_metadata.tweet_text) : "") ||
+            bookmark.title;
+          const isLong = tweetText.length > 500;
+          return (
+            <div className="reader-tweet">
+              {isLong ? (
+                <div
+                  className="reader-content"
+                  dangerouslySetInnerHTML={{
+                    __html: tweetText
+                      .split(/\n/)
+                      .map((line: string) => {
+                        const t = line.trim();
+                        if (!t) return "";
+                        const escaped = t
+                          .replace(/&/g, "&amp;")
+                          .replace(/</g, "&lt;")
+                          .replace(/>/g, "&gt;");
+                        // Detect headings: short lines without ending punctuation
+                        if (t.length < 80 && !/[.!?:,;"]$/.test(t)) {
+                          return `<h3>${escaped}</h3>`;
+                        }
+                        return `<p>${escaped}</p>`;
+                      })
+                      .filter(Boolean)
+                      .join("\n"),
+                  }}
+                />
+              ) : (
+                <blockquote className="reader-tweet-text">{tweetText}</blockquote>
+              )}
+              <a
+                href={bookmark.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="reader-tweet-link"
+              >
+                View on X &rarr;
+              </a>
+            </div>
+          );
+        })() : bookmark.type === "video" ? (
           <div className="reader-video">
             {bookmark.url.includes("youtube.com") || bookmark.url.includes("youtu.be") ? (
               <iframe

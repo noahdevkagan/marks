@@ -61,6 +61,7 @@ export default function SettingsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ id: number; title: string } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -111,9 +112,11 @@ export default function SettingsPage() {
     }
   }
 
-  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function uploadPdf(file: File) {
+    if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+      setUploadError("Only PDF files are supported");
+      return;
+    }
 
     setUploading(true);
     setUploadResult(null);
@@ -141,6 +144,28 @@ export default function SettingsPage() {
       setUploading(false);
       if (pdfInputRef.current) pdfInputRef.current.value = "";
     }
+  }
+
+  function handlePdfInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadPdf(file);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) uploadPdf(file);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
   }
 
   return (
@@ -211,19 +236,27 @@ export default function SettingsPage() {
       <div className="settings-section">
         <h2 className="settings-heading">Upload PDF</h2>
         <p className="settings-description">
-          Upload a PDF to read later. 50 MB max.
+          Drag a PDF here or click to browse. 50 MB max.
         </p>
-        <label className="import-upload-btn">
-          {uploading ? "Uploading..." : "Choose PDF"}
+        <div
+          className={`pdf-dropzone${dragging ? " pdf-dropzone-active" : ""}${uploading ? " pdf-dropzone-uploading" : ""}`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => !uploading && pdfInputRef.current?.click()}
+        >
           <input
             ref={pdfInputRef}
             type="file"
             accept=".pdf,application/pdf"
-            onChange={handlePdfUpload}
+            onChange={handlePdfInput}
             disabled={uploading}
             hidden
           />
-        </label>
+          <span className="pdf-dropzone-text">
+            {uploading ? "Uploading..." : "Drop PDF here or click to browse"}
+          </span>
+        </div>
 
         {uploadResult && (
           <div className="import-result import-success">

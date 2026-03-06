@@ -1601,6 +1601,36 @@ header nav .nav-add {
   border-color: var(--accent);
 }
 
+.pdf-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.pdf-dropzone:hover {
+  border-color: var(--accent);
+}
+
+.pdf-dropzone-active {
+  border-color: var(--accent);
+  background: rgba(0, 102, 204, 0.04);
+}
+
+.pdf-dropzone-uploading {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.pdf-dropzone-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
 .import-result {
   font-size: 0.8125rem;
   margin-top: 0.75rem;

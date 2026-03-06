@@ -774,6 +774,14 @@ header nav .nav-add {
   margin: 0 0 1rem 0;
   padding: 1rem 1.25rem;
   border-left: 3px solid var(--accent);
+  white-space: pre-wrap;
+}
+
+.reader-tweet-text img {
+  height: 1.2em;
+  width: 1.2em;
+  vertical-align: -0.15em;
+  display: inline;
   color: var(--text-primary);
   white-space: pre-wrap;
 }

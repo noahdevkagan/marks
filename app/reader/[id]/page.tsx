@@ -94,16 +94,9 @@ export default async function ReaderPage({ params }: Props) {
 
         {bookmark.type === "tweet" ? (
           <div className="reader-tweet">
-            {archived ? (
-              <div
-                className="reader-content"
-                dangerouslySetInnerHTML={{ __html: archived.content_html }}
-              />
-            ) : (
-              <blockquote className="reader-tweet-text">
-                {bookmark.description || bookmark.title}
-              </blockquote>
-            )}
+            <blockquote className="reader-tweet-text">
+              {bookmark.description || bookmark.title}
+            </blockquote>
             <a
               href={bookmark.url}
               target="_blank"

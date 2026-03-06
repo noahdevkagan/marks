@@ -71,7 +71,7 @@ export default async function ReaderPage({ params }: Props) {
               </>
             )}
             <span>{new URL(bookmark.url).hostname.replace("www.", "")}</span>
-            {archived && bookmark.type !== "video" && bookmark.type !== "image" && (
+            {archived && bookmark.type !== "video" && bookmark.type !== "image" && bookmark.type !== "tweet" && (
               <>
                 <span>&middot;</span>
                 <span>{archived.word_count?.toLocaleString()} words</span>
@@ -81,7 +81,7 @@ export default async function ReaderPage({ params }: Props) {
                 </span>
               </>
             )}
-            {archived?.source && archived.source !== "readability" && (
+            {archived?.source && archived.source !== "readability" && archived.source !== "tweet" && (
               <>
                 <span>&middot;</span>
                 <span className="reader-source">
@@ -94,9 +94,16 @@ export default async function ReaderPage({ params }: Props) {
 
         {bookmark.type === "tweet" ? (
           <div className="reader-tweet">
-            <blockquote className="reader-tweet-text">
-              {bookmark.description || bookmark.title}
-            </blockquote>
+            {archived ? (
+              <div
+                className="reader-content"
+                dangerouslySetInnerHTML={{ __html: archived.content_html }}
+              />
+            ) : (
+              <blockquote className="reader-tweet-text">
+                {bookmark.description || bookmark.title}
+              </blockquote>
+            )}
             <a
               href={bookmark.url}
               target="_blank"

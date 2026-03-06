@@ -30,8 +30,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     const forceArchive = body.force_archive === true;
     const pageHtml = body.page_html as string | undefined;
 
-    // Archive tweets: preserve text + download media images as durable backup
-    if (bookmark.type === "tweet") {
+    // Archive tweets: if page_html provided (e.g. from archive.today), extract full content
+    // Otherwise preserve stored text + download media images as durable backup
+    if (bookmark.type === "tweet" && !pageHtml) {
       const supabase = await createClient();
       const tweetText = bookmark.description || bookmark.title || "";
       const author = bookmark.type_metadata?.author
@@ -220,7 +221,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       };
 
       if (bookmark.type === "tweet") {
-        const tweetText = bookmark.description || bookmark.title || "";
+        // Use full archived text if available (e.g. from archive.today), fall back to stored description
+        const tweetText = article?.content_text || bookmark.description || bookmark.title || "";
         const handleMatch = bookmark.title.match(/^@(\w+):/);
         const handle = handleMatch?.[1] || "";
         enrichment = await enrichTweet(tweetText, handle, tagNames);

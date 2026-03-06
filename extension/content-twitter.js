@@ -40,7 +40,7 @@
     setTimeout(() => handleBookmarkClick(bookmarkBtn), 500);
   }, true);
 
-  function handleBookmarkClick(btn) {
+  async function handleBookmarkClick(btn) {
     console.log("[Marks] handleBookmarkClick — token:", !!config?.token, "data-testid:", btn.getAttribute("data-testid"));
     if (!config?.token) return;
 
@@ -52,6 +52,16 @@
     // Find the parent tweet article
     const article = btn.closest("article");
     if (!article) return;
+
+    // Try to expand "Show more" for long/collapsed tweets before extracting
+    const showMoreBtn = [...article.querySelectorAll("span")].find(
+      (el) => el.textContent.trim().toLowerCase() === "show more",
+    );
+    if (showMoreBtn) {
+      const clickTarget = showMoreBtn.closest("[role=\"button\"], a, button") || showMoreBtn;
+      clickTarget.click();
+      await new Promise((r) => setTimeout(r, 800));
+    }
 
     // Extract tweet data from the DOM
     const tweetData = extractTweetData(article);

@@ -27,24 +27,22 @@ export function EnrichmentBlock({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
 
   async function reanalyze() {
     setLoading(true);
-    setStatus("Analyzing...");
+    setError("");
 
     const res = await fetch(`/api/bookmarks/${bookmarkId}/enrich`, {
       method: "POST",
     });
 
+    setLoading(false);
     if (res.ok) {
-      setStatus("");
-      setLoading(false);
       router.refresh();
     } else {
       const data = await res.json();
-      setStatus(data.error ?? "Failed");
-      setLoading(false);
+      setError(data.error ?? "Failed");
     }
   }
 
@@ -61,7 +59,8 @@ export function EnrichmentBlock({
 
   return (
     <div className="enrichment-block">
-      {loading && <div className="enrich-status">{status}</div>}
+      {loading && <div className="enrich-status">Analyzing...</div>}
+      {error && <div className="enrich-status" style={{ color: "var(--danger, #c00)" }}>{error}</div>}
 
       {!loading && !hasContent && (
         <button className="reader-action-btn enrich-refresh" onClick={reanalyze}>

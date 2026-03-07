@@ -6,6 +6,7 @@ import { ArchiveActions } from "./archive-actions";
 import { EnrichmentBlock } from "./enrichment-block";
 import { ReaderMarkReadButton } from "./mark-read-button";
 import { PdfViewer } from "./pdf-viewer";
+import { ReadingProgress } from "./reading-progress";
 import { ReadingTracker } from "./reading-tracker";
 
 type Props = { params: Promise<{ id: string }> };
@@ -36,6 +37,7 @@ export default async function ReaderPage({ params }: Props) {
 
   return (
     <div className="reader-container">
+      <ReadingProgress />
       <ReadingTracker bookmarkId={id} wordCount={archived?.word_count ?? 0} />
       <nav className="reader-nav">
         <Link href="/">&larr; back</Link>

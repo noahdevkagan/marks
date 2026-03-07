@@ -57,10 +57,18 @@ export function EnrichmentBlock({
     router.refresh();
   }
 
-  if (!enrichment) return null;
-
   if (loading) {
     return <div className="enrich-status">{status}</div>;
+  }
+
+  if (!enrichment) {
+    return (
+      <div className="enrichment-block">
+        <button className="reader-action-btn enrich-refresh" onClick={reanalyze}>
+          analyze
+        </button>
+      </div>
+    );
   }
 
   return (

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-server";
 import { ArchiveActions } from "./archive-actions";
 import { EnrichmentBlock } from "./enrichment-block";
 import { ReaderMarkReadButton } from "./mark-read-button";
+import { PdfViewer } from "./pdf-viewer";
 import { ReadingTracker } from "./reading-tracker";
 
 type Props = { params: Promise<{ id: string }> };
@@ -174,25 +175,10 @@ export default async function ReaderPage({ params }: Props) {
           </div>
         ) : bookmark.type === "pdf" ? (
           <div className="reader-pdf">
-            {archived ? (
-              <div
-                className="reader-content"
-                dangerouslySetInnerHTML={{ __html: archived.content_html }}
-              />
-            ) : (
-              <iframe
-                src={`/api/pdf/${id}`}
-                title={bookmark.title || "PDF"}
-              />
-            )}
-            <a
-              href={`/api/pdf/${id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="reader-pdf-download"
-            >
-              View original PDF
-            </a>
+            <PdfViewer
+              pdfUrl={`/api/pdf/${id}`}
+              contentHtml={archived?.content_html}
+            />
           </div>
         ) : bookmark.type === "image" ? (
           <div className="reader-image">

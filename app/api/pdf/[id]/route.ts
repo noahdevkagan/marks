@@ -7,11 +7,13 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function GET(req: NextRequest, { params }: Params) {
   try {
-    await requireUser();
+    const user = await requireUser();
     const { id: idStr } = await params;
     const id = parseInt(idStr, 10);
 
     const supabase = await createClient();
+
+    // Try stored_media lookup first
     const { data: media } = await supabase
       .from("stored_media")
       .select("storage_path")
@@ -19,13 +21,35 @@ export async function GET(req: NextRequest, { params }: Params) {
       .eq("media_type", "pdf_upload")
       .single();
 
-    if (!media) {
+    let storagePath = media?.storage_path;
+
+    // Fallback: construct expected path directly
+    if (!storagePath) {
+      storagePath = `${user.id}/${id}/document.pdf`;
+    }
+
+    const signedUrl = await getSignedUrl(storagePath);
+    if (!signedUrl) {
       return NextResponse.json({ error: "PDF not found" }, { status: 404 });
     }
 
-    const signedUrl = await getSignedUrl(media.storage_path);
-    if (!signedUrl) {
-      return NextResponse.json({ error: "Could not generate URL" }, { status: 500 });
+    // Check if client wants a redirect (browser navigation) or proxied data (react-pdf)
+    const wantsProxy = req.headers.get("accept")?.includes("application/pdf") ||
+      req.headers.get("sec-fetch-dest") === "empty";
+
+    if (wantsProxy) {
+      // Proxy the PDF data to avoid CORS issues with cross-origin redirects
+      const pdfRes = await fetch(signedUrl);
+      if (!pdfRes.ok) {
+        return NextResponse.json({ error: "PDF fetch failed" }, { status: 502 });
+      }
+      const pdfData = await pdfRes.arrayBuffer();
+      return new NextResponse(pdfData, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Cache-Control": "private, max-age=3600",
+        },
+      });
     }
 
     return NextResponse.redirect(signedUrl);

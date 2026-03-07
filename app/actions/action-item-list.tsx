@@ -69,7 +69,7 @@ export function ActionItemList({
       });
       return { ...eb, action_items: items };
     })
-    .filter((eb) => eb.action_items.length > 0);
+    .filter((eb) => eb.action_items.length > 0 || (filter === "all" && eb.summary));
 
   return (
     <>

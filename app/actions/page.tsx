@@ -67,11 +67,11 @@ export default async function ActionsPage() {
     (bookmarks ?? []).map((b) => [b.id, b]),
   );
 
-  // Build enriched bookmark list, only include ones with action items
+  // Build enriched bookmark list (include all with summary or action items)
   const enrichedBookmarks: EnrichedBookmark[] = enrichments
     .filter(
       (e) =>
-        Array.isArray(e.action_items) && e.action_items.length > 0,
+        e.summary || (Array.isArray(e.action_items) && e.action_items.length > 0),
     )
     .map((e) => {
       const bk = bookmarkMap.get(e.bookmark_id);

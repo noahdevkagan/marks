@@ -57,34 +57,30 @@ export function EnrichmentBlock({
     router.refresh();
   }
 
-  if (loading) {
-    return <div className="enrich-status">{status}</div>;
-  }
-
-  if (!enrichment) {
-    return (
-      <div className="enrichment-block">
-        <button className="reader-action-btn enrich-refresh" onClick={reanalyze}>
-          analyze
-        </button>
-      </div>
-    );
-  }
+  const hasContent = enrichment?.summary || (enrichment?.action_items?.length ?? 0) > 0;
 
   return (
     <div className="enrichment-block">
-      {enrichment.summary && (
+      {loading && <div className="enrich-status">{status}</div>}
+
+      {!loading && !hasContent && (
+        <button className="reader-action-btn enrich-refresh" onClick={reanalyze}>
+          analyze
+        </button>
+      )}
+
+      {enrichment?.summary && (
         <div className="enrichment-summary">
           <span className="enrichment-label">Summary</span>
           <p>{enrichment.summary}</p>
         </div>
       )}
 
-      {enrichment.action_items.length > 0 && (
+      {(enrichment?.action_items?.length ?? 0) > 0 && (
         <div className="enrichment-actions">
           <span className="enrichment-label">Action Items</span>
           <ul className="action-items-list">
-            {enrichment.action_items.map((item, i) => (
+            {enrichment!.action_items.map((item, i) => (
               <li key={i} className={item.completed ? "completed" : ""}>
                 <label>
                   <input
@@ -122,7 +118,7 @@ export function EnrichmentBlock({
         </div>
       )}
 
-      {enrichment.ai_tags && enrichment.ai_tags.length > 0 && (
+      {enrichment?.ai_tags && enrichment.ai_tags.length > 0 && (
         <div className="enrichment-tags">
           <span className="enrichment-label">Suggested Tags</span>
           <div className="tags">
@@ -135,12 +131,11 @@ export function EnrichmentBlock({
         </div>
       )}
 
-      <button
-        className="reader-action-btn enrich-refresh"
-        onClick={reanalyze}
-      >
-        re-analyze
-      </button>
+      {!loading && hasContent && (
+        <button className="reader-action-btn enrich-refresh" onClick={reanalyze}>
+          re-analyze
+        </button>
+      )}
     </div>
   );
 }

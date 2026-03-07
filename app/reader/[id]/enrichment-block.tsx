@@ -5,6 +5,7 @@ import { useState } from "react";
 
 type ActionItem = {
   text: string;
+  url?: string;
   completed: boolean;
   created_at: string;
 };
@@ -56,10 +57,18 @@ export function EnrichmentBlock({
     router.refresh();
   }
 
-  if (!enrichment) return null;
-
   if (loading) {
     return <div className="enrich-status">{status}</div>;
+  }
+
+  if (!enrichment) {
+    return (
+      <div className="enrichment-block">
+        <button className="reader-action-btn enrich-refresh" onClick={reanalyze}>
+          analyze
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -85,6 +94,28 @@ export function EnrichmentBlock({
                   />
                   <span>{item.text}</span>
                 </label>
+                {item.url && (
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="action-item-link"
+                  >
+                    {(() => {
+                      try {
+                        const u = new URL(item.url);
+                        const host = u.hostname.replace("www.", "");
+                        if (host === "github.com") {
+                          const parts = u.pathname.split("/").filter(Boolean);
+                          if (parts.length >= 2) return `${host}/${parts[0]}/${parts[1]}`;
+                        }
+                        return host;
+                      } catch {
+                        return "link";
+                      }
+                    })()}
+                  </a>
+                )}
               </li>
             ))}
           </ul>

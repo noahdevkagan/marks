@@ -59,6 +59,38 @@ export async function POST(req: NextRequest, { params }: Params) {
 
       await updateBookmark(id, { is_archived: true });
 
+      // Auto-enrich tweet after archiving
+      try {
+        const existingTags = await getAllTags();
+        const tagNames = existingTags.map((t) => t.name);
+        const handleMatch = bookmark.title.match(/^@(\w+):/);
+        const handle = handleMatch?.[1] || "";
+        const enrichment = await enrichTweet(tweetText, handle, tagNames);
+
+        await supabase.from("bookmark_enrichments").upsert(
+          {
+            bookmark_id: id,
+            summary: enrichment.summary,
+            action_items: enrichment.action_items.map((a) => ({
+              text: a.text,
+              url: a.url || null,
+              completed: false,
+              created_at: new Date().toISOString(),
+            })),
+            ai_tags: enrichment.tags,
+            model: "claude-3-haiku-20240307",
+            processed_at: new Date().toISOString(),
+          },
+          { onConflict: "bookmark_id" },
+        );
+
+        const currentTags = bookmark.tags ?? [];
+        const mergedTags = [...new Set([...currentTags, ...enrichment.tags])];
+        await setBookmarkTags(id, mergedTags);
+      } catch (enrichErr) {
+        console.error("Tweet enrichment error:", enrichErr);
+      }
+
       // Store tweet text and download media images to durable storage
       try {
         await uploadToStorage(
@@ -217,7 +249,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
       let enrichment: {
         summary: string;
-        action_items: { text: string }[];
+        action_items: { text: string; url?: string }[];
         tags: string[];
       };
 
@@ -239,6 +271,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           summary: enrichment.summary,
           action_items: enrichment.action_items.map((a) => ({
             text: a.text,
+            url: a.url || null,
             completed: false,
             created_at: new Date().toISOString(),
           })),

@@ -33,6 +33,29 @@ const HIGHLIGHT_COLORS: Record<string, { bg: string; border: string }> = {
   orange: { bg: "rgba(249, 115, 22, 0.12)", border: "#f97316" },
 };
 
+async function saveToServer(kindleData: KindleData) {
+  try {
+    await fetch("/api/kindle", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: kindleData }),
+    });
+  } catch {
+    // Server save failed silently — localStorage still has the data
+  }
+}
+
+async function loadFromServer(): Promise<KindleData | null> {
+  try {
+    const res = await fetch("/api/kindle");
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default function KindlePage() {
   const [data, setData] = useState<KindleData | null>(null);
   const [activeBook, setActiveBook] = useState<string | null>(null);
@@ -40,13 +63,42 @@ export default function KindlePage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [extensionReady, setExtensionReady] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-  // Load cached data
+  // Load data: try localStorage first, then fetch from server
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) setData(JSON.parse(cached));
-    } catch {}
+    let cancelled = false;
+
+    async function load() {
+      // Try localStorage first (instant)
+      let localData: KindleData | null = null;
+      try {
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached) localData = JSON.parse(cached);
+      } catch {}
+
+      if (localData) {
+        setData(localData);
+        setLoaded(true);
+        return;
+      }
+
+      // No local data — fetch from server (cross-device sync)
+      const serverData = await loadFromServer();
+      if (cancelled) return;
+
+      if (serverData) {
+        setData(serverData);
+        // Cache locally for next time
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(serverData));
+        } catch {}
+      }
+      setLoaded(true);
+    }
+
+    load();
+    return () => { cancelled = true; };
   }, []);
 
   // Listen for extension messages
@@ -71,6 +123,8 @@ export default function KindlePage() {
           setData(payload);
           setSyncing(false);
           setSyncMessage("");
+          // Save to server for cross-device access
+          saveToServer(payload);
           break;
         }
       }
@@ -156,6 +210,15 @@ export default function KindlePage() {
         if (days === 1) return "Synced yesterday";
         return `Synced ${days}d ago`;
       })();
+
+  // Still loading — show nothing to avoid flash
+  if (!loaded) {
+    return (
+      <div className="container">
+        <Nav />
+      </div>
+    );
+  }
 
   // No data and no extension — show install instructions
   if (!data && !extensionReady) {

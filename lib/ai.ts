@@ -2,6 +2,32 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic(); // reads ANTHROPIC_API_KEY from env
 
+/** Extract valid JSON from an LLM response that may contain markdown fences or trailing text */
+function extractJSON(raw: string): string {
+  let s = raw.trim();
+  // Strip markdown fences
+  s = s.replace(/^```json?\s*\n?/i, "").replace(/\n?\s*```\s*$/i, "");
+  // Find the outermost JSON object or array
+  const start = s.search(/[\[{]/);
+  if (start === -1) return s;
+  const open = s[start];
+  const close = open === "{" ? "}" : "]";
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < s.length; i++) {
+    const c = s[i];
+    if (escape) { escape = false; continue; }
+    if (c === "\\") { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === open || c === (open === "{" ? "[" : "{")) depth++;
+    if (c === close || c === (close === "}" ? "]" : "}")) depth--;
+    if (depth === 0) return s.slice(start, i + 1);
+  }
+  return s.slice(start);
+}
+
 export type ActionItem = {
   text: string;
   url?: string;
@@ -47,12 +73,7 @@ Return ONLY a JSON array of strings, e.g. ["tag1", "tag2", "tag3"]. No markdown 
   const text =
     response.content[0].type === "text" ? response.content[0].text : "";
 
-  const cleaned = text
-    .replace(/^```json?\n?/, "")
-    .replace(/\n?```$/, "")
-    .trim();
-
-  const tags = JSON.parse(cleaned) as string[];
+  const tags = JSON.parse(extractJSON(text)) as string[];
   return tags.map((t) => t.toLowerCase().trim()).filter((t) => t.length > 0);
 }
 
@@ -94,12 +115,7 @@ Return ONLY valid JSON, no markdown fences.`,
   const text =
     response.content[0].type === "text" ? response.content[0].text : "";
 
-  const cleaned = text
-    .replace(/^```json?\n?/, "")
-    .replace(/\n?```$/, "")
-    .trim();
-
-  return JSON.parse(cleaned) as ArticleEnrichment;
+  return JSON.parse(extractJSON(text)) as ArticleEnrichment;
 }
 
 export async function enrichTweet(
@@ -130,11 +146,5 @@ Return ONLY valid JSON, no markdown fences.`,
   const text =
     response.content[0].type === "text" ? response.content[0].text : "";
 
-  // Defensive parsing: strip markdown fences if present
-  const cleaned = text
-    .replace(/^```json?\n?/, "")
-    .replace(/\n?```$/, "")
-    .trim();
-
-  return JSON.parse(cleaned) as TweetEnrichment;
+  return JSON.parse(extractJSON(text)) as TweetEnrichment;
 }

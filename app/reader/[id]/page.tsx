@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBookmark } from "@/lib/db";
 import { createClient } from "@/lib/supabase-server";
+import { AnalyzeButton } from "./analyze-button";
 import { ArchiveActions } from "./archive-actions";
 import { EnrichmentBlock } from "./enrichment-block";
 import { ReaderMarkReadButton } from "./mark-read-button";
@@ -45,6 +46,7 @@ export default async function ReaderPage({ params }: Props) {
           <a href={bookmark.url} target="_blank" rel="noopener noreferrer">
             original
           </a>
+          <AnalyzeButton bookmarkId={id} />
           <ArchiveActions
             bookmarkId={id}
             bookmarkUrl={bookmark.url}

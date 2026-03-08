@@ -5,18 +5,20 @@ import { SearchBar } from "./search-bar";
 import { Bookmarklet } from "./bookmarklet";
 import { BookmarkItem } from "./bookmark-item";
 import { ConfirmBanner } from "./confirm-banner";
+import { HideReadToggle } from "./hide-read-toggle";
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ tag?: string; page?: string }>;
+  searchParams: Promise<{ tag?: string; page?: string; hide_read?: string }>;
 }) {
   const params = await searchParams;
   const tag = params.tag;
   const page = parseInt(params.page ?? "1", 10);
+  const hideRead = params.hide_read === "1";
 
   const [{ bookmarks, total }, allTags] = await Promise.all([
-    getBookmarks({ tag, page }),
+    getBookmarks({ tag, page, unreadOnly: hideRead }),
     getAllTags(),
   ]);
 
@@ -45,7 +47,12 @@ export default async function Home({
         <ConfirmBanner />
       </Suspense>
 
-      <SearchBar />
+      <div className="feed-controls">
+        <SearchBar />
+        <Suspense>
+          <HideReadToggle hideRead={hideRead} />
+        </Suspense>
+      </div>
 
       {allTags.length > 0 && (
         <div className="tag-list">
@@ -91,6 +98,7 @@ export default async function Home({
                 <Link
                   href={`/?${new URLSearchParams({
                     ...(tag ? { tag } : {}),
+                    ...(hideRead ? { hide_read: "1" } : {}),
                     page: String(page - 1),
                   })}`}
                 >
@@ -104,6 +112,7 @@ export default async function Home({
                 <Link
                   href={`/?${new URLSearchParams({
                     ...(tag ? { tag } : {}),
+                    ...(hideRead ? { hide_read: "1" } : {}),
                     page: String(page + 1),
                   })}`}
                 >

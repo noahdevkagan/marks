@@ -16,8 +16,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const tag = searchParams.get("tag") ?? undefined;
     const page = parseInt(searchParams.get("page") ?? "1", 10);
+    const unreadOnly = searchParams.get("hide_read") === "1";
 
-    const result = await getBookmarks({ tag, page });
+    const result = await getBookmarks({ tag, page, unreadOnly });
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

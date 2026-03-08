@@ -1136,6 +1136,35 @@ header nav .nav-add {
 }
 
 /* Search */
+.feed-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.feed-controls .search-container {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.hide-read-toggle {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 0.75rem;
+  background: var(--bg-surface);
+  color: var(--text-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.hide-read-toggle:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
 .search-container {
   position: relative;
   margin-bottom: 1.5rem;

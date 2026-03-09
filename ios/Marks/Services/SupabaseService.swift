@@ -144,17 +144,48 @@ final class SupabaseService {
         let is_archived: Bool?
         let created_at: String
         let updated_at: String?
-        let archived_content: [ArchivedContentRow]?
         let bookmark_tags: [TagJoinRow]?
 
-        var content_html: String? {
-            archived_content?.first?.content_html
-        }
-        var content_text: String? {
-            archived_content?.first?.content_text
-        }
+        // PostgREST returns 1-to-1 relations (archived_content has bookmark_id as PK)
+        // as a single object or null, not an array. Handle both formats.
+        let content_html: String?
+        let content_text: String?
+
         var tags: [String] {
             bookmark_tags?.map { $0.tags.name } ?? []
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id, url, title, description, type
+            case is_read, is_archived, created_at, updated_at
+            case archived_content, bookmark_tags
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decode(Int.self, forKey: .id)
+            url = try c.decode(String.self, forKey: .url)
+            title = try c.decode(String.self, forKey: .title)
+            description = try c.decodeIfPresent(String.self, forKey: .description)
+            type = try c.decodeIfPresent(String.self, forKey: .type)
+            is_read = try c.decodeIfPresent(Bool.self, forKey: .is_read)
+            is_archived = try c.decodeIfPresent(Bool.self, forKey: .is_archived)
+            created_at = try c.decode(String.self, forKey: .created_at)
+            updated_at = try c.decodeIfPresent(String.self, forKey: .updated_at)
+            bookmark_tags = try? c.decodeIfPresent([TagJoinRow].self, forKey: .bookmark_tags)
+
+            // PostgREST v10+ returns 1-to-1 as object; older versions return array
+            if let obj = try? c.decodeIfPresent(ArchivedContentRow.self, forKey: .archived_content) {
+                content_html = obj.content_html
+                content_text = obj.content_text
+            } else if let arr = try? c.decodeIfPresent([ArchivedContentRow].self, forKey: .archived_content),
+                      let first = arr.first {
+                content_html = first.content_html
+                content_text = first.content_text
+            } else {
+                content_html = nil
+                content_text = nil
+            }
         }
     }
 

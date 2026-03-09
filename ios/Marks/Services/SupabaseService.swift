@@ -28,7 +28,14 @@ final class SupabaseService {
 
     // MARK: — HTTP helpers
 
-    private func request(_ path: String, method: String = "GET", body: Data? = nil, query: [String: String] = [:]) async throws -> Data {
+    private var isRefreshing = false
+
+    private func request(_ path: String, method: String = "GET", body: Data? = nil, query: [String: String] = [:], allowRetry: Bool = true) async throws -> Data {
+        let data = try await rawRequest(path, method: method, body: body, query: query)
+        return data
+    }
+
+    private func rawRequest(_ path: String, method: String = "GET", body: Data? = nil, query: [String: String] = [:]) async throws -> Data {
         var components = URLComponents(string: baseURL + path)!
         if !query.isEmpty {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
@@ -51,6 +58,15 @@ final class SupabaseService {
         guard let http = response as? HTTPURLResponse else {
             throw SupabaseError.unknown
         }
+
+        // On 401, try refreshing the token once and retry
+        if http.statusCode == 401, !isRefreshing {
+            if try await refreshSession() {
+                return try await rawRequest(path, method: method, body: body, query: query)
+            }
+            throw SupabaseError.unauthorized
+        }
+
         if http.statusCode == 401 {
             throw SupabaseError.unauthorized
         }
@@ -59,6 +75,38 @@ final class SupabaseService {
             throw SupabaseError.api(msg)
         }
         return data
+    }
+
+    /// Refresh the access token using the stored refresh token.
+    /// Returns true if refresh succeeded.
+    private func refreshSession() async throws -> Bool {
+        guard let refresh = refreshToken else { return false }
+        isRefreshing = true
+        defer { isRefreshing = false }
+
+        let body = try JSONEncoder().encode(["refresh_token": refresh])
+        var components = URLComponents(string: baseURL + "/auth/v1/token")!
+        components.queryItems = [URLQueryItem(name: "grant_type", value: "refresh_token")]
+
+        var req = URLRequest(url: components.url!)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(apiKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        req.httpBody = body
+
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            clearTokens()
+            return false
+        }
+
+        let auth = try decoder.decode(AuthResponse.self, from: data)
+        saveTokens(access: auth.access_token, refresh: auth.refresh_token)
+
+        // After refreshing, force a full re-sync so we get all data fresh
+        UserDefaults.standard.removeObject(forKey: "lastSyncDate")
+        return true
     }
 
     // MARK: — Auth

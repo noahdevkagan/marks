@@ -1,5 +1,4 @@
 import Foundation
-import Supabase
 
 @MainActor
 final class AuthViewModel: ObservableObject {

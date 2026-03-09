@@ -121,6 +121,11 @@ final class SupabaseService {
 
     // MARK: — Bookmarks
 
+    struct ArchivedContentRow: Decodable {
+        let content_html: String?
+        let content_text: String?
+    }
+
     struct BookmarkRow: Decodable {
         let id: Int
         let url: String
@@ -132,13 +137,19 @@ final class SupabaseService {
         let is_archived: Bool?
         let created_at: String
         let updated_at: String?
-        let archived_content: String?
-        let archived_text: String?
+        let archived_content: [ArchivedContentRow]?
+
+        var content_html: String? {
+            archived_content?.first?.content_html
+        }
+        var content_text: String? {
+            archived_content?.first?.content_text
+        }
     }
 
     func fetchBookmarks(since: Date? = nil) async throws -> [BookmarkRow] {
         var query: [String: String] = [
-            "select": "*",
+            "select": "*,archived_content(content_html,content_text)",
             "order": "created_at.desc"
         ]
         if let since {

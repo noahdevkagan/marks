@@ -9,8 +9,10 @@ struct ReaderView: View {
         Group {
             if let cached = bookmark.cachedContent, let html = cached.html {
                 ReaderWebView(html: wrapHTML(html, title: bookmark.title))
+                    .ignoresSafeArea(edges: .bottom)
             } else if let url = URL(string: bookmark.url) {
                 LiveWebView(url: url)
+                    .ignoresSafeArea(edges: .bottom)
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "doc.text")
@@ -100,8 +102,10 @@ struct LiveWebView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.scrollView.contentInsetAdjustmentBehavior = .always
+        webView.allowsBackForwardNavigationGestures = true
         return webView
     }
 

@@ -74,13 +74,13 @@ final class SyncEngine {
                 if let updated = row.updated_at { existing.updatedAt = iso.date(from: updated) ?? .now }
 
                 // Cache content if available
-                if let html = row.archived_content {
+                if let html = row.content_html {
                     if let cached = existing.cachedContent {
                         cached.html = html
-                        cached.plainText = row.archived_text
+                        cached.plainText = row.content_text
                         cached.cachedAt = .now
                     } else {
-                        let content = CachedContent(bookmarkID: row.id, html: html, plainText: row.archived_text)
+                        let content = CachedContent(bookmarkID: row.id, html: html, plainText: row.content_text)
                         context.insert(content)
                         existing.cachedContent = content
                     }
@@ -102,8 +102,8 @@ final class SyncEngine {
                 context.insert(bookmark)
 
                 // Cache content
-                if let html = row.archived_content {
-                    let content = CachedContent(bookmarkID: row.id, html: html, plainText: row.archived_text)
+                if let html = row.content_html {
+                    let content = CachedContent(bookmarkID: row.id, html: html, plainText: row.content_text)
                     context.insert(content)
                     bookmark.cachedContent = content
                 }

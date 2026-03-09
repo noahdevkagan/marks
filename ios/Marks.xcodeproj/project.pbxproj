@@ -10,7 +10,7 @@
 		E78748AF7F7D3DFC4EC8B9A1 /* MarksApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD803509C7615EB601417D1; };
 		A8B1CE4568D20AAC49195DB8 /* Bookmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709824C82E79ED34BF87D11D; };
 		B6811235201F0201BCDFA42C /* Tag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 184CD762FDF83356F9ED3EBE; };
-		37459CEC7DAE3EDB590EC8B1 /* ArchivedContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10692E871F2BC2363811C8A3; };
+		37459CEC7DAE3EDB590EC8B1 /* CachedContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10692E871F2BC2363811C8A3; };
 		325961D4AE8D9FA23AD348AE /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DC7AA68F56EC40814F8BA56; };
 		FB1D29B658990E7CF6D52696 /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50218D751C3F1DB2559A7099; };
 		0054D431092652477AF9DF93 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2766BDC403AFBC0A66C05CA9; };
@@ -39,7 +39,7 @@
 		DCD803509C7615EB601417D1 /* MarksApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarksApp.swift; sourceTree = "<group>"; };
 		709824C82E79ED34BF87D11D /* Bookmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bookmark.swift; sourceTree = "<group>"; };
 		184CD762FDF83356F9ED3EBE /* Tag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tag.swift; sourceTree = "<group>"; };
-		10692E871F2BC2363811C8A3 /* ArchivedContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchivedContent.swift; sourceTree = "<group>"; };
+		10692E871F2BC2363811C8A3 /* CachedContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedContent.swift; sourceTree = "<group>"; };
 		0DC7AA68F56EC40814F8BA56 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
 		50218D751C3F1DB2559A7099 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
 		2766BDC403AFBC0A66C05CA9 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
@@ -99,7 +99,7 @@
 			children = (
 				709824C82E79ED34BF87D11D /* Bookmark.swift */,
 				184CD762FDF83356F9ED3EBE /* Tag.swift */,
-				10692E871F2BC2363811C8A3 /* ArchivedContent.swift */,
+				10692E871F2BC2363811C8A3 /* CachedContent.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";

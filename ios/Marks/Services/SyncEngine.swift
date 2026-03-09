@@ -19,7 +19,7 @@ final class SyncEngine {
 
     private func pushPending(context: ModelContext) async throws {
         let pendingDescriptor = FetchDescriptor<Bookmark>(
-            predicate: #Predicate { $0.syncStatus != SyncStatus.synced }
+            predicate: #Predicate { $0.syncStatus.rawValue != 0 }
         )
         let pending = try context.fetch(pendingDescriptor)
 

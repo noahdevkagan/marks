@@ -16,7 +16,7 @@ struct BookmarkDetailView: View {
 
                     Link(bookmark.hostname, destination: URL(string: bookmark.url) ?? URL(string: "about:blank")!)
                         .font(.subheadline)
-                        .foregroundStyle(.accent)
+                        .foregroundStyle(Color.accentColor)
 
                     if !bookmark.desc.isEmpty {
                         Text(bookmark.desc)

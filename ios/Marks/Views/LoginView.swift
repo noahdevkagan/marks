@@ -13,7 +13,7 @@ struct LoginView: View {
             VStack(spacing: 8) {
                 Image(systemName: "bookmark.fill")
                     .font(.system(size: 48))
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(Color.accentColor)
                 Text("Marks")
                     .font(.largeTitle.bold())
                 Text("Save it. Read later.")

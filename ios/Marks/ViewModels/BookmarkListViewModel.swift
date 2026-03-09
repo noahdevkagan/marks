@@ -60,28 +60,28 @@ final class BookmarkListViewModel: ObservableObject {
         switch filterValue {
         case .all:
             if search.isEmpty {
-                return #Predicate { $0.syncStatus != SyncStatus.deleted }
+                return #Predicate { $0.syncStatus.rawValue != 3 }
             }
             return #Predicate { bookmark in
-                bookmark.syncStatus != SyncStatus.deleted &&
+                bookmark.syncStatus.rawValue != 3 &&
                 (bookmark.title.localizedStandardContains(search) ||
                  bookmark.url.localizedStandardContains(search))
             }
         case .unread:
             if search.isEmpty {
-                return #Predicate { $0.syncStatus != SyncStatus.deleted && !$0.isRead }
+                return #Predicate { $0.syncStatus.rawValue != 3 && !$0.isRead }
             }
             return #Predicate { bookmark in
-                bookmark.syncStatus != SyncStatus.deleted && !bookmark.isRead &&
+                bookmark.syncStatus.rawValue != 3 && !bookmark.isRead &&
                 (bookmark.title.localizedStandardContains(search) ||
                  bookmark.url.localizedStandardContains(search))
             }
         case .archived:
             if search.isEmpty {
-                return #Predicate { $0.syncStatus != SyncStatus.deleted && $0.isArchived }
+                return #Predicate { $0.syncStatus.rawValue != 3 && $0.isArchived }
             }
             return #Predicate { bookmark in
-                bookmark.syncStatus != SyncStatus.deleted && bookmark.isArchived &&
+                bookmark.syncStatus.rawValue != 3 && bookmark.isArchived &&
                 (bookmark.title.localizedStandardContains(search) ||
                  bookmark.url.localizedStandardContains(search))
             }

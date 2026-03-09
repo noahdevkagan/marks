@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct TagsView: View {
-    @Query(filter: #Predicate<Bookmark> { $0.syncStatus != SyncStatus.deleted })
+    @Query(filter: #Predicate<Bookmark> { $0.syncStatus.rawValue != 3 })
     private var bookmarks: [Bookmark]
 
     @State private var selectedTag: String?
@@ -62,7 +62,7 @@ struct TagBookmarksView: View {
         self.tag = tag
         // Note: SwiftData Predicate can't check array contains, so we filter in body
         _bookmarks = Query(
-            filter: #Predicate<Bookmark> { $0.syncStatus != SyncStatus.deleted },
+            filter: #Predicate<Bookmark> { $0.syncStatus.rawValue != 3 },
             sort: \Bookmark.createdAt,
             order: .reverse
         )

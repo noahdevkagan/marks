@@ -202,6 +202,16 @@ final class SupabaseService {
     func deleteBookmark(id: Int) async throws {
         _ = try await request("/rest/v1/bookmarks", method: "DELETE", query: ["id": "eq.\(id)"])
     }
+
+    /// Fetch archived content for a single bookmark from the server.
+    func fetchArchivedContent(bookmarkID: Int) async throws -> ArchivedContentRow? {
+        let data = try await request("/rest/v1/archived_content", query: [
+            "select": "content_html,content_text",
+            "bookmark_id": "eq.\(bookmarkID)"
+        ])
+        let rows = try decoder.decode([ArchivedContentRow].self, from: data)
+        return rows.first
+    }
 }
 
 // MARK: — Errors

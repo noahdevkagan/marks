@@ -1,16 +1,32 @@
 import SwiftUI
+import SwiftData
 import WebKit
 
 struct ReaderView: View {
+    @Environment(\.modelContext) private var context
     let bookmark: Bookmark
     @State private var showingSafari = false
+    @State private var fetchedHTML: String?
+    @State private var isFetching = false
+    @State private var fetchFailed = false
+
+    private var readerHTML: String? {
+        bookmark.cachedContent?.html ?? fetchedHTML
+    }
 
     var body: some View {
         Group {
-            if let cached = bookmark.cachedContent, let html = cached.html {
+            if let html = readerHTML {
                 ReaderWebView(html: wrapHTML(html, title: bookmark.title))
                     .ignoresSafeArea(edges: .bottom)
-            } else if let url = URL(string: bookmark.url) {
+            } else if isFetching {
+                VStack(spacing: 16) {
+                    ProgressView()
+                    Text("Loading reader view...")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else if fetchFailed, let url = URL(string: bookmark.url) {
                 LiveWebView(url: url)
                     .ignoresSafeArea(edges: .bottom)
             } else {
@@ -27,6 +43,10 @@ struct ReaderView: View {
                 }
                 .padding()
             }
+        }
+        .task {
+            guard readerHTML == nil else { return }
+            await fetchReaderContent()
         }
         .navigationTitle(bookmark.hostname)
         .navigationBarTitleDisplayMode(.inline)
@@ -59,6 +79,29 @@ struct ReaderView: View {
             if let url = URL(string: bookmark.url) {
                 SafariView(url: url)
             }
+        }
+    }
+
+    private func fetchReaderContent() async {
+        isFetching = true
+        defer { isFetching = false }
+
+        do {
+            guard let row = try await SupabaseService.shared.fetchArchivedContent(bookmarkID: bookmark.id),
+                  let html = row.content_html else {
+                fetchFailed = true
+                return
+            }
+
+            // Cache locally for offline use
+            let cached = CachedContent(bookmarkID: bookmark.id, html: html, plainText: row.content_text)
+            context.insert(cached)
+            bookmark.cachedContent = cached
+            try? context.save()
+
+            fetchedHTML = html
+        } catch {
+            fetchFailed = true
         }
     }
 

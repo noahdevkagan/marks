@@ -56,8 +56,9 @@ final class SyncEngine {
         let iso = ISO8601DateFormatter()
 
         for row in rows {
+            let rowID = row.id
             let descriptor = FetchDescriptor<Bookmark>(
-                predicate: #Predicate { $0.id == row.id }
+                predicate: #Predicate { $0.id == rowID }
             )
             let existing = try context.fetch(descriptor).first
 

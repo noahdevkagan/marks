@@ -20,11 +20,19 @@ final class Bookmark {
     var isArchived: Bool
     var createdAt: Date
     var updatedAt: Date
-    var syncStatus: SyncStatus
+
+    // Stored as Int so SwiftData #Predicate can filter on it
+    var syncStatusValue: Int
 
     // Relationships
     @Relationship(deleteRule: .cascade)
     var cachedContent: CachedContent?
+
+    @Transient
+    var syncStatus: SyncStatus {
+        get { SyncStatus(rawValue: syncStatusValue) ?? .synced }
+        set { syncStatusValue = newValue.rawValue }
+    }
 
     init(
         id: Int,
@@ -49,7 +57,7 @@ final class Bookmark {
         self.isArchived = isArchived
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.syncStatus = syncStatus
+        self.syncStatusValue = syncStatus.rawValue
     }
 
     var hostname: String {

@@ -374,8 +374,9 @@ saveForm.addEventListener("submit", async (e) => {
   saveStatus.textContent = "";
   saveStatus.className = "status";
 
+  const url = document.getElementById("url").value;
   const data = {
-    url: document.getElementById("url").value,
+    url,
     title: document.getElementById("title").value,
     description: document.getElementById("description").value,
     tags,
@@ -385,6 +386,21 @@ saveForm.addEventListener("submit", async (e) => {
       type_metadata: tweetMeta,
     }),
   };
+
+  // Detect tweet URLs and add type metadata
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace("www.", "");
+    if ((host === "x.com" || host === "twitter.com") && parsed.pathname.includes("/status/")) {
+      data.type = "tweet";
+      const parts = parsed.pathname.split("/");
+      const handle = parts[1] || "";
+      if (handle) {
+        data.type_metadata = { author: handle };
+      }
+    }
+  } catch {}
+
 
   const result = await chrome.runtime.sendMessage({ type: "save-bookmark", data });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 
 type Highlight = {
   text: string;
@@ -64,6 +64,7 @@ export default function KindlePage() {
   const [syncMessage, setSyncMessage] = useState("");
   const [extensionReady, setExtensionReady] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const autoSynced = useRef(false);
 
   // Load data: try localStorage first, then fetch from server
   useEffect(() => {
@@ -109,6 +110,12 @@ export default function KindlePage() {
       switch (event.data.type) {
         case "marks:pong-extension":
           setExtensionReady(true);
+          if (!autoSynced.current) {
+            autoSynced.current = true;
+            setSyncing(true);
+            setSyncMessage("Opening Amazon...");
+            window.postMessage({ type: "marks:kindle-start-sync" }, "*");
+          }
           break;
         case "marks:kindle-sync-progress":
           setSyncMessage(event.data.message);
@@ -134,6 +141,12 @@ export default function KindlePage() {
 
     if ((window as any).__marks_extension) {
       setExtensionReady(true);
+      if (!autoSynced.current) {
+        autoSynced.current = true;
+        setSyncing(true);
+        setSyncMessage("Opening Amazon...");
+        window.postMessage({ type: "marks:kindle-start-sync" }, "*");
+      }
     }
     window.postMessage({ type: "marks:ping-extension" }, "*");
 
@@ -150,8 +163,7 @@ export default function KindlePage() {
   const books = useMemo(() => {
     if (!data) return [];
     return data.books
-      .filter((b) => b.highlights && b.highlights.length > 0)
-      .sort((a, b) => b.highlights.length - a.highlights.length);
+      .filter((b) => b.highlights && b.highlights.length > 0);
   }, [data]);
 
   const filteredBooks = useMemo(() => {

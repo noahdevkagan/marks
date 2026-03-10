@@ -16,9 +16,12 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.signUp({
+    const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/api/auth/callback`,
+      },
     });
 
     if (authError) {
@@ -27,8 +30,20 @@ export default function SignupPage() {
       return;
     }
 
-    // Redirect to home with banner flag
-    window.location.href = "/?confirm=1";
+    // Send welcome email (fire-and-forget)
+    fetch("/api/auth/welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).catch(() => {});
+
+    // If auto-confirmed (session exists), go straight to the app
+    if (data.session) {
+      window.location.href = "/";
+    } else {
+      // Email confirmation required — show the banner
+      window.location.href = "/?confirm=1";
+    }
   }
 
   return (

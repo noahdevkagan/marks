@@ -84,14 +84,31 @@ function parseHighlights(html) {
     }
     const lm = hd ? hd.textContent.match(/Location:\s*([\d,]+)/) : null;
     const pm = hd ? hd.textContent.match(/Page:\s*([\d,]+)/) : null;
-    const dm = hd ? hd.textContent.match(/Added on\s+\w+,\s+(.+)/) : null;
+    // Try multiple date patterns from the header or nearby elements
+    const headerText = hd ? hd.textContent : "";
+    const rowText = row.textContent;
+    let addedOn = null;
+    // Pattern: "Added on Thursday, January 1, 2023"
+    const dm1 = headerText.match(/Added on\s+\w+,\s+(.+)/);
+    // Pattern: date in header like "January 1, 2023" or "1 January 2023"
+    const dm2 = headerText.match(/(\w+ \d{1,2},\s*\d{4})/);
+    const dm3 = headerText.match(/(\d{1,2} \w+ \d{4})/);
+    // Look for a dedicated date element in the row
+    const dateEl = row.querySelector(".kp-notebook-highlight-date, .a-color-secondary");
+    const dm4 = dateEl ? dateEl.textContent.match(/(\w+ \d{1,2},\s*\d{4})/) : null;
+    if (dm1) addedOn = dm1[1].trim();
+    else if (dm2) addedOn = dm2[1].trim();
+    else if (dm3) addedOn = dm3[1].trim();
+    else if (dm4) addedOn = dm4[1].trim();
+    // Debug: log first highlight header to console
+    if (highlights.length === 0) console.log("[Marks] highlight header sample:", headerText);
     highlights.push({
       text: he.textContent.trim(),
       color,
       location: lm ? parseInt(lm[1].replace(",", "")) : null,
       page: pm ? parseInt(pm[1].replace(",", "")) : null,
       note: ne && ne.textContent.trim() ? ne.textContent.trim() : null,
-      addedOn: dm ? dm[1].trim() : null,
+      addedOn,
     });
   }
   return highlights;

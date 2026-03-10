@@ -15,15 +15,28 @@
   const bookEls = document.querySelectorAll(".kp-notebook-library-each-book");
   showProgress(`Found ${bookEls.length} books. Syncing...`);
 
+  // Debug: log first book entry's full HTML and text
+  const firstBook = bookEls[0];
+  if (firstBook) {
+    console.log("[Marks] first book text:", firstBook.textContent);
+    console.log("[Marks] first book HTML:", firstBook.innerHTML);
+  }
+
   const meta = Array.from(bookEls).map((el) => {
     const img = el.querySelector(".kp-notebook-cover-image");
     let cover = img ? img.src : null;
     if (cover) cover = cover.replace(/_SY\d+/, "_SY400");
+    // Try to find a "last accessed" or date element
+    const allText = el.textContent || "";
+    const dateMatch = allText.match(/(?:Last\s+(?:accessed|opened|read|annotated))[:\s]+(.+?)(?:\n|$)/i)
+      || allText.match(/(\w+ \d{1,2},\s*\d{4})/)
+      || allText.match(/(\d{1,2} \w+ \d{4})/);
     return {
       asin: el.id,
       title: (el.querySelector("h2") || {}).textContent?.trim() || "Unknown",
       author: (el.querySelector("p") || {}).textContent?.replace(/^By:\s*/, "").trim() || "Unknown",
       cover,
+      lastAccessedRaw: dateMatch ? dateMatch[1].trim() : null,
     };
   });
 
@@ -47,6 +60,7 @@
         title: r.book.title,
         author: r.book.author,
         cover: r.book.cover,
+        lastAccessed: r.book.lastAccessedRaw,
         highlights: parseHighlights(r.html),
       });
     });

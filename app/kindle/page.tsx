@@ -17,6 +17,7 @@ type Book = {
   title: string;
   author: string;
   cover: string | null;
+  lastAccessed: string | null;
   highlights: Highlight[];
 };
 
@@ -57,14 +58,17 @@ async function loadFromServer(): Promise<KindleData | null> {
   }
 }
 
-function latestHighlightDate(highlights: Highlight[]): number | null {
-  let latest: number | null = null;
-  for (const h of highlights) {
+function bookDate(book: Book): number | null {
+  if (book.lastAccessed) {
+    const t = new Date(book.lastAccessed).getTime();
+    if (!isNaN(t)) return t;
+  }
+  for (const h of book.highlights) {
     if (!h.addedOn) continue;
     const t = new Date(h.addedOn).getTime();
-    if (!isNaN(t) && (latest === null || t > latest)) latest = t;
+    if (!isNaN(t)) return t;
   }
-  return latest;
+  return null;
 }
 
 export default function KindlePage() {
@@ -176,8 +180,8 @@ export default function KindlePage() {
     return data.books
       .filter((b) => b.highlights && b.highlights.length > 0)
       .sort((a, b) => {
-        const dateA = latestHighlightDate(a.highlights);
-        const dateB = latestHighlightDate(b.highlights);
+        const dateA = bookDate(a);
+        const dateB = bookDate(b);
         if (!dateA && !dateB) return 0;
         if (!dateA) return 1;
         if (!dateB) return -1;

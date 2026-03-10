@@ -2,7 +2,9 @@
 
 devices([
   "iPhone 16 Pro Max",
-  "iPhone 16 Pro"
+  "iPhone 16 Pro",
+  "iPhone 17 Pro Max",
+  "iPhone 17 Pro"
 ])
 
 languages(["en-US"])

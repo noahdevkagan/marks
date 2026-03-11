@@ -245,11 +245,11 @@ export default function PrivacyPage() {
         Questions about this policy? Reach out at{" "}
         <Link href="/">getmarks.sh</Link> or the Marks GitHub repository:{" "}
         <a
-          href="https://github.com/crxnamja/marks"
+          href="https://github.com/noahdevkagan/marks"
           target="_blank"
           rel="noopener noreferrer"
         >
-          github.com/crxnamja/marks
+          github.com/noahdevkagan/marks
         </a>
       </p>
     </div>

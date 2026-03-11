@@ -33,12 +33,12 @@ For each test file found, run it with `npx tsx` and verify it passes.
 If there are uncommitted changes, commit and push to main. Then wait for Vercel to deploy:
 
 ```bash
-cd /Users/sunflower/marks && gh api repos/crxnamja/marks/deployments --jq '.[0] | {sha: .sha[0:8], created_at: .created_at}'
+cd /Users/sunflower/marks && gh api repos/noahdevkagan/marks/deployments --jq '.[0] | {sha: .sha[0:8], created_at: .created_at}'
 ```
 
 Check deployment status:
 ```bash
-cd /Users/sunflower/marks && gh api repos/crxnamja/marks/deployments --jq '.[0].statuses_url' | xargs gh api --jq '.[0].state'
+cd /Users/sunflower/marks && gh api repos/noahdevkagan/marks/deployments --jq '.[0].statuses_url' | xargs gh api --jq '.[0].state'
 ```
 
 If deployment failed, check the build logs and fix.

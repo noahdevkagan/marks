@@ -198,7 +198,7 @@ export async function extractMetadata(url: string): Promise<PageMetadata> {
   }
 }
 
-// Extract LinkedIn post metadata via server-side fetch (OG tags + page text)
+// Extract LinkedIn post metadata via server-side fetch (JSON-LD + OG tags)
 export async function extractLinkedInPost(
   url: string,
 ): Promise<{ content_html: string; content_text: string; author: string; image: string } | null> {
@@ -214,56 +214,61 @@ export async function extractLinkedInPost(
     const html = await res.text();
     const { document: doc } = parseHTML(html);
 
-    // LinkedIn embeds post text in meta tags even in server-rendered HTML
-    const ogDesc =
-      doc.querySelector('meta[property="og:description"]')?.getAttribute("content") ??
-      doc.querySelector('meta[name="description"]')?.getAttribute("content") ?? "";
-
-    // Author from og:title (LinkedIn formats as "Author Name on LinkedIn: post preview")
-    const ogTitle =
-      doc.querySelector('meta[property="og:title"]')?.getAttribute("content") ??
-      doc.querySelector("title")?.textContent ?? "";
-    let author = "";
-    const onLinkedIn = ogTitle.match(/^(.+?)\s+on\s+LinkedIn/i);
-    if (onLinkedIn) {
-      author = onLinkedIn[1].trim();
-    }
-
-    const ogImage =
-      doc.querySelector('meta[property="og:image"]')?.getAttribute("content") ?? "";
-
-    // Try to get full post text from the page content (LinkedIn sometimes includes it)
     let text = "";
+    let author = "";
+    let image = "";
 
-    // Check for structured data (JSON-LD)
+    // 1. Try JSON-LD (LinkedIn uses SocialMediaPosting schema)
     const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
     for (const script of scripts) {
       try {
         const data = JSON.parse(script.textContent ?? "");
-        if (data.articleBody) {
-          text = data.articleBody;
+        if (data["@type"] === "SocialMediaPosting" || data["@type"] === "Article") {
+          text = data.articleBody ?? data.text ?? data.headline ?? "";
+          if (data.author?.name) author = data.author.name;
+          if (data.image?.contentUrl) image = data.image.contentUrl;
+          else if (typeof data.image === "string") image = data.image;
           break;
         }
-        if (data.text) {
-          text = data.text;
-          break;
-        }
+        // Fallback for other schemas
+        if (data.articleBody) { text = data.articleBody; break; }
       } catch {
         // invalid JSON, skip
       }
     }
 
-    // Fallback to OG description (usually truncated but better than nothing)
-    if (!text && ogDesc.length > 50) {
-      text = ogDesc;
+    // 2. Fallback to OG tags
+    if (!author) {
+      const ogTitle =
+        doc.querySelector('meta[property="og:title"]')?.getAttribute("content") ?? "";
+      const onLinkedIn = ogTitle.match(/^(.+?)\s+on\s+LinkedIn/i);
+      if (onLinkedIn) author = onLinkedIn[1].trim();
+    }
+
+    if (!text) {
+      text =
+        doc.querySelector('meta[property="og:description"]')?.getAttribute("content") ??
+        doc.querySelector('meta[name="description"]')?.getAttribute("content") ?? "";
+    }
+
+    if (!image) {
+      image =
+        doc.querySelector('meta[property="og:image"]')?.getAttribute("content") ?? "";
     }
 
     if (!text) return null;
 
-    const contentHtml = `<p>${text.replace(/\n/g, "<br>")}</p>` +
-      (ogImage ? `\n<img src="${ogImage}" alt="LinkedIn post image" />` : "");
+    // Build clean HTML — split on double newlines for paragraphs
+    const paragraphs = text.split(/\n\n+/).map((p) => p.trim()).filter(Boolean);
+    let contentHtml = paragraphs
+      .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+      .join("\n");
 
-    return { content_html: contentHtml, content_text: text, author, image: ogImage };
+    if (image) {
+      contentHtml += `\n<img src="${image}" alt="" />`;
+    }
+
+    return { content_html: contentHtml, content_text: text, author, image };
   } catch {
     return null;
   }

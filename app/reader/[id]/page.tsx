@@ -106,24 +106,20 @@ export default async function ReaderPage({ params }: Props) {
           </div>
         </header>
 
-        {bookmark.type === "linkedin" ? (() => {
-          const contentHtml = bookmark.type_metadata?.content_html
-            ? String(bookmark.type_metadata.content_html)
-            : "";
-          const postText =
-            bookmark.description ||
-            (bookmark.type_metadata?.post_text ? String(bookmark.type_metadata.post_text) : "") ||
-            bookmark.title;
-          return (
+        {bookmark.type === "linkedin" ? (
             <div className="reader-linkedin">
-              {(archived?.content_html || contentHtml) ? (
+              {archived?.content_html ? (
                 <div
                   className="reader-content"
-                  dangerouslySetInnerHTML={{ __html: archived?.content_html || contentHtml }}
+                  dangerouslySetInnerHTML={{ __html: archived.content_html }}
                 />
               ) : (
                 <div className="reader-content">
-                  <p style={{ whiteSpace: "pre-wrap" }}>{postText}</p>
+                  <p style={{ whiteSpace: "pre-wrap" }}>
+                    {bookmark.description ||
+                      (bookmark.type_metadata?.post_text ? String(bookmark.type_metadata.post_text) : "") ||
+                      bookmark.title}
+                  </p>
                 </div>
               )}
               <a
@@ -135,8 +131,7 @@ export default async function ReaderPage({ params }: Props) {
                 View on LinkedIn &rarr;
               </a>
             </div>
-          );
-        })() : bookmark.type === "tweet" ? (() => {
+          ) : bookmark.type === "tweet" ? (() => {
           const contentHtml = bookmark.type_metadata?.content_html
             ? String(bookmark.type_metadata.content_html)
             : "";

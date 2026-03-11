@@ -273,72 +273,40 @@ async function showSaveView() {
         document.getElementById("title").value = tab.title || "";
       }
     } else if (tab.id && tab.url && isLinkedInPostUrl(tab.url)) {
-      // LinkedIn post: extract author + post text + images from DOM
+      // LinkedIn post: extract author + post text from DOM
       try {
         const results = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-
-            // Find the main post container — try permalink overlay first, then feed
+            // Find the main post container
             const post = document.querySelector('.scaffold-finite-scroll__content .feed-shared-update-v2')
               || document.querySelector('.feed-shared-update-v2')
               || document.querySelector('[data-urn]');
 
-            // Author name (use aria-hidden span for clean text without screen-reader extras)
+            // Author name (aria-hidden span gives clean text)
             const authorEl = post?.querySelector('.update-components-actor__name span[aria-hidden="true"]')
               || post?.querySelector('.feed-shared-actor__name span[aria-hidden="true"]')
               || document.querySelector('.update-components-actor__name span[aria-hidden="true"]')
               || document.querySelector('.feed-shared-actor__name span[aria-hidden="true"]');
             const author = authorEl?.textContent?.trim() || "";
 
-            // Post text element
+            // Post text — use innerText for clean output
             const textEl = post?.querySelector('.update-components-text .break-words')
               || post?.querySelector('.feed-shared-update-v2__description .break-words')
-              || post?.querySelector('.break-words')
               || document.querySelector('.update-components-text .break-words')
               || document.querySelector('.feed-shared-update-v2__description .break-words');
             const text = textEl?.innerText?.trim() || "";
 
-            // Build HTML preserving paragraphs and links
-            let contentHtml = "";
-            if (textEl) {
-              let html = "";
-              for (const node of textEl.childNodes) {
-                if (node.nodeType === Node.TEXT_NODE) {
-                  html += esc(node.textContent || "");
-                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                  const el = node;
-                  if (el.tagName === "A") {
-                    const href = el.getAttribute("href") || "";
-                    html += '<a href="' + esc(href) + '">' + esc(el.textContent || "") + '</a>';
-                  } else if (el.tagName === "BR") {
-                    html += "<br>";
-                  } else {
-                    html += esc(el.textContent || "");
-                  }
-                }
-              }
-              contentHtml = "<p>" + html + "</p>";
-            }
-
-            // Extract images from the post
-            const images = [];
+            // Post image (just the main shared image, not UI chrome)
+            let image = "";
             const scope = post || document;
-            const imgEls = scope.querySelectorAll(
-              '.feed-shared-image__container img, ' +
-              '.update-components-image img, ' +
-              '.feed-shared-carousel img'
-            );
-            for (const img of imgEls) {
-              const src = img.getAttribute("src");
-              if (src && !src.includes("profile-displayphoto") && !src.includes("1x1")) {
-                images.push(src);
-                contentHtml += '\n<img src="' + esc(src) + '" alt="LinkedIn post image" />';
-              }
+            const imgEl = scope.querySelector('.update-components-image img, .feed-shared-image__container img');
+            if (imgEl) {
+              const src = imgEl.getAttribute("src") || "";
+              if (src && !src.includes("profile-displayphoto")) image = src;
             }
 
-            return { author, text, contentHtml, images };
+            return { author, text, image };
           },
         });
         const liData = results?.[0]?.result;
@@ -351,8 +319,7 @@ async function showSaveView() {
           tweetMeta = {
             author: liData.author || "",
             post_text: liData.text,
-            content_html: liData.contentHtml || "",
-            media_urls: liData.images || [],
+            media_urls: liData.image ? [liData.image] : [],
           };
         } else {
           document.getElementById("title").value = tab.title || "";

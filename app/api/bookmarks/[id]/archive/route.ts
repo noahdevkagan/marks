@@ -57,13 +57,11 @@ export async function POST(req: NextRequest, { params }: Params) {
       }
       const wordCount = postText.split(/\s+/).filter(Boolean).length;
 
-      // Use content_html from extension if available, otherwise build from text
-      let contentHtml = bookmark.type_metadata?.content_html
-        ? String(bookmark.type_metadata.content_html)
-        : "";
-      if (!contentHtml) {
-        contentHtml = `<p>${postText.replace(/\n/g, "<br>")}</p>`;
-      }
+      // Build clean HTML from text — split on double newlines for paragraphs
+      const paragraphs = postText.split(/\n\n+/).map((p: string) => p.trim()).filter(Boolean);
+      const contentHtml = paragraphs
+        .map((p: string) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+        .join("\n");
 
       await supabase.from("archived_content").upsert(
         {

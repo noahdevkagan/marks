@@ -42,10 +42,9 @@ export async function POST(req: NextRequest) {
 
     const type = body.type ?? detectBookmarkType(body.url);
 
-    // LinkedIn posts: use metadata from extension, fall back to server-side OG extraction
+    // LinkedIn posts: use metadata from extension, fall back to server-side OG/JSON-LD extraction
     if (type === "linkedin") {
-      const hasExtensionData = body.type_metadata?.post_text || body.type_metadata?.content_html;
-      if (!hasExtensionData) {
+      if (!body.type_metadata?.post_text) {
         try {
           const liPost = await extractLinkedInPost(body.url);
           if (liPost) {
@@ -57,9 +56,8 @@ export async function POST(req: NextRequest) {
             }
             body.type_metadata = {
               ...body.type_metadata,
-              author: liPost.author,
+              author: body.type_metadata?.author || liPost.author,
               post_text: liPost.content_text,
-              content_html: liPost.content_html,
             };
           }
         } catch {

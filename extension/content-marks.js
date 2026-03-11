@@ -27,7 +27,10 @@ window.addEventListener("message", async (event) => {
 
   // Highlights page asks to start Kindle sync
   if (event.data?.type === "marks:kindle-start-sync") {
-    chrome.runtime.sendMessage({ type: "kindle-start-sync" });
+    chrome.runtime.sendMessage({
+      type: "kindle-start-sync",
+      existingBooks: event.data.existingBooks || [],
+    });
     return;
   }
 });

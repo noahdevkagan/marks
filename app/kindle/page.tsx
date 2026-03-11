@@ -26,6 +26,20 @@ type KindleData = {
 
 const STORAGE_KEY = "marks-kindle-data";
 
+function mergeKindleData(
+  prev: KindleData | null,
+  incoming: KindleData,
+): KindleData {
+  if (!prev) return incoming;
+  const updatedAsins = new Set(incoming.books.map((b) => b.asin));
+  // Keep books that weren't re-scraped (unchanged), add all incoming
+  const kept = prev.books.filter((b) => !updatedAsins.has(b.asin));
+  return {
+    exportedAt: incoming.exportedAt,
+    books: [...incoming.books, ...kept],
+  };
+}
+
 const HIGHLIGHT_COLORS: Record<string, { bg: string; border: string }> = {
   yellow: { bg: "rgba(250, 204, 21, 0.15)", border: "#eab308" },
   blue: { bg: "rgba(59, 130, 246, 0.12)", border: "#3b82f6" },
@@ -129,14 +143,17 @@ export default function KindlePage() {
           break;
         case "marks:kindle-sync-data": {
           const payload = event.data.payload as KindleData;
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-          setData(payload);
+          // Merge with existing data: updated/new books from payload, keep unchanged ones
+          setData((prev) => {
+            const merged = mergeKindleData(prev, payload);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            saveToServer(merged).then((ok) => {
+              if (!ok) setSaveFailed(true);
+            });
+            return merged;
+          });
           setSyncing(false);
           setSyncMessage("");
-          // Save to server for cross-device access
-          saveToServer(payload).then((ok) => {
-            if (!ok) setSaveFailed(true);
-          });
           break;
         }
       }
@@ -156,7 +173,11 @@ export default function KindlePage() {
     if (syncing || !extensionReady) return;
     setSyncing(true);
     setSyncMessage("Opening Amazon...");
-    window.postMessage({ type: "marks:kindle-start-sync" }, "*");
+    // Pass existing books so the extension can skip unchanged ones
+    const existingBooks = data
+      ? data.books.map((b) => ({ asin: b.asin, highlightCount: b.highlights.length }))
+      : [];
+    window.postMessage({ type: "marks:kindle-start-sync", existingBooks }, "*");
   }
 
   const books = useMemo(() => {

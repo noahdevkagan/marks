@@ -7,5 +7,5 @@ export async function POST(req: NextRequest) {
 
   const url = req.nextUrl.clone();
   url.pathname = "/login";
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, 303);
 }

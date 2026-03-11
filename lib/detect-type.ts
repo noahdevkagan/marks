@@ -1,6 +1,7 @@
 export type BookmarkType =
   | "article"
   | "tweet"
+  | "linkedin"
   | "video"
   | "image"
   | "pdf"
@@ -18,6 +19,14 @@ export function detectBookmarkType(url: string): BookmarkType {
       pathname.includes("/status/")
     ) {
       return "tweet";
+    }
+
+    // LinkedIn post
+    if (
+      hostname === "linkedin.com" &&
+      (pathname.includes("/posts/") || pathname.includes("/pulse/"))
+    ) {
+      return "linkedin";
     }
 
     // Video

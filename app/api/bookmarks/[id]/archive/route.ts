@@ -6,6 +6,7 @@ import {
   extractViaArchive,
   extractFromHtml,
   extractMediaUrls,
+  extractLinkedInPost,
 } from "@/lib/extract";
 import { createClient } from "@/lib/supabase-server";
 import { textToHtml } from "@/lib/pdf-html";
@@ -31,6 +32,107 @@ export async function POST(req: NextRequest, { params }: Params) {
     const body = await req.json().catch(() => ({}));
     const forceArchive = body.force_archive === true;
     const pageHtml = body.page_html as string | undefined;
+
+    // Archive LinkedIn posts: use extension data or fall back to server-side extraction
+    if (bookmark.type === "linkedin") {
+      const supabase = await createClient();
+      let postText = bookmark.description ||
+        (bookmark.type_metadata?.post_text ? String(bookmark.type_metadata.post_text) : "") ||
+        bookmark.title || "";
+      let author = bookmark.type_metadata?.author
+        ? String(bookmark.type_metadata.author)
+        : "";
+
+      // If no content from extension, try server-side extraction
+      if (!postText || postText.length < 50) {
+        try {
+          const liPost = await extractLinkedInPost(bookmark.url);
+          if (liPost) {
+            if (liPost.content_text.length > postText.length) postText = liPost.content_text;
+            if (!author && liPost.author) author = liPost.author;
+          }
+        } catch {
+          // server-side extraction failed, continue with what we have
+        }
+      }
+      const wordCount = postText.split(/\s+/).filter(Boolean).length;
+
+      // Use content_html from extension if available, otherwise build from text
+      let contentHtml = bookmark.type_metadata?.content_html
+        ? String(bookmark.type_metadata.content_html)
+        : "";
+      if (!contentHtml) {
+        contentHtml = `<p>${postText.replace(/\n/g, "<br>")}</p>`;
+      }
+
+      await supabase.from("archived_content").upsert(
+        {
+          bookmark_id: id,
+          content_html: contentHtml,
+          content_text: postText,
+          excerpt: postText.slice(0, 200),
+          byline: author || null,
+          word_count: wordCount,
+          source: "linkedin",
+        },
+        { onConflict: "bookmark_id" },
+      );
+
+      await updateBookmark(id, { is_archived: true });
+
+      // Auto-enrich
+      try {
+        const existingTags = await getAllTags();
+        const tagNames = existingTags.map((t) => t.name);
+        const contentText = postText || bookmark.description || "";
+        const enrichment = await enrichArticle(contentText, bookmark.title, tagNames);
+
+        await supabase.from("bookmark_enrichments").upsert(
+          {
+            bookmark_id: id,
+            summary: enrichment.summary,
+            action_items: enrichment.action_items.map((a) => ({
+              text: a.text,
+              url: a.url || null,
+              completed: false,
+              created_at: new Date().toISOString(),
+            })),
+            ai_tags: enrichment.tags,
+            model: "claude-3-haiku-20240307",
+            processed_at: new Date().toISOString(),
+          },
+          { onConflict: "bookmark_id" },
+        );
+
+        const currentTags = bookmark.tags ?? [];
+        const mergedTags = [...new Set([...currentTags, ...enrichment.tags])];
+        await setBookmarkTags(id, mergedTags);
+      } catch (enrichErr) {
+        console.error("LinkedIn enrichment error:", enrichErr);
+      }
+
+      // Store to durable storage
+      try {
+        await uploadToStorage(
+          user.id,
+          id,
+          "content.txt",
+          postText,
+          "text/plain",
+          "text_archive",
+          bookmark.url,
+        );
+      } catch (storageErr) {
+        console.error("LinkedIn storage error:", storageErr);
+      }
+
+      return NextResponse.json({
+        ok: true,
+        source: "linkedin",
+        word_count: wordCount,
+        excerpt: postText.slice(0, 200),
+      });
+    }
 
     // Archive tweets: if page_html provided (e.g. from archive.today), extract full content
     // Otherwise preserve stored text + download media images as durable backup

@@ -65,7 +65,10 @@ export default async function ReaderPage({ params }: Props) {
               @{String(bookmark.type_metadata.author)}
             </p>
           )}
-          {bookmark.type !== "tweet" && archived?.byline && (
+          {bookmark.type === "linkedin" && archived?.byline && (
+            <p className="reader-byline">{archived.byline}</p>
+          )}
+          {bookmark.type !== "tweet" && bookmark.type !== "linkedin" && archived?.byline && (
             <p className="reader-byline">{archived.byline}</p>
           )}
           <div className="reader-meta">
@@ -92,7 +95,7 @@ export default async function ReaderPage({ params }: Props) {
                 </span>
               </>
             )}
-            {archived?.source && archived.source !== "readability" && archived.source !== "tweet" && archived.source !== "pdf" && (
+            {archived?.source && archived.source !== "readability" && archived.source !== "tweet" && archived.source !== "pdf" && archived.source !== "linkedin" && (
               <>
                 <span>&middot;</span>
                 <span className="reader-source">
@@ -103,7 +106,37 @@ export default async function ReaderPage({ params }: Props) {
           </div>
         </header>
 
-        {bookmark.type === "tweet" ? (() => {
+        {bookmark.type === "linkedin" ? (() => {
+          const contentHtml = bookmark.type_metadata?.content_html
+            ? String(bookmark.type_metadata.content_html)
+            : "";
+          const postText =
+            bookmark.description ||
+            (bookmark.type_metadata?.post_text ? String(bookmark.type_metadata.post_text) : "") ||
+            bookmark.title;
+          return (
+            <div className="reader-linkedin">
+              {(archived?.content_html || contentHtml) ? (
+                <div
+                  className="reader-content"
+                  dangerouslySetInnerHTML={{ __html: archived?.content_html || contentHtml }}
+                />
+              ) : (
+                <div className="reader-content">
+                  <p style={{ whiteSpace: "pre-wrap" }}>{postText}</p>
+                </div>
+              )}
+              <a
+                href={bookmark.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="reader-linkedin-link"
+              >
+                View on LinkedIn &rarr;
+              </a>
+            </div>
+          );
+        })() : bookmark.type === "tweet" ? (() => {
           const contentHtml = bookmark.type_metadata?.content_html
             ? String(bookmark.type_metadata.content_html)
             : "";

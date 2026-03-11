@@ -198,6 +198,77 @@ export async function extractMetadata(url: string): Promise<PageMetadata> {
   }
 }
 
+// Extract LinkedIn post metadata via server-side fetch (OG tags + page text)
+export async function extractLinkedInPost(
+  url: string,
+): Promise<{ content_html: string; content_text: string; author: string; image: string } | null> {
+  try {
+    const res = await fetch(url, {
+      headers: FETCH_HEADERS,
+      redirect: "follow",
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!res.ok) return null;
+
+    const html = await res.text();
+    const { document: doc } = parseHTML(html);
+
+    // LinkedIn embeds post text in meta tags even in server-rendered HTML
+    const ogDesc =
+      doc.querySelector('meta[property="og:description"]')?.getAttribute("content") ??
+      doc.querySelector('meta[name="description"]')?.getAttribute("content") ?? "";
+
+    // Author from og:title (LinkedIn formats as "Author Name on LinkedIn: post preview")
+    const ogTitle =
+      doc.querySelector('meta[property="og:title"]')?.getAttribute("content") ??
+      doc.querySelector("title")?.textContent ?? "";
+    let author = "";
+    const onLinkedIn = ogTitle.match(/^(.+?)\s+on\s+LinkedIn/i);
+    if (onLinkedIn) {
+      author = onLinkedIn[1].trim();
+    }
+
+    const ogImage =
+      doc.querySelector('meta[property="og:image"]')?.getAttribute("content") ?? "";
+
+    // Try to get full post text from the page content (LinkedIn sometimes includes it)
+    let text = "";
+
+    // Check for structured data (JSON-LD)
+    const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+    for (const script of scripts) {
+      try {
+        const data = JSON.parse(script.textContent ?? "");
+        if (data.articleBody) {
+          text = data.articleBody;
+          break;
+        }
+        if (data.text) {
+          text = data.text;
+          break;
+        }
+      } catch {
+        // invalid JSON, skip
+      }
+    }
+
+    // Fallback to OG description (usually truncated but better than nothing)
+    if (!text && ogDesc.length > 50) {
+      text = ogDesc;
+    }
+
+    if (!text) return null;
+
+    const contentHtml = `<p>${text.replace(/\n/g, "<br>")}</p>` +
+      (ogImage ? `\n<img src="${ogImage}" alt="LinkedIn post image" />` : "");
+
+    return { content_html: contentHtml, content_text: text, author, image: ogImage };
+  } catch {
+    return null;
+  }
+}
+
 // Parse pre-fetched HTML (e.g. from Chrome extension capturing the page)
 export function extractFromHtml(
   html: string,

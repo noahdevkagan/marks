@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { getBookmarks, createBookmark, setBookmarkTags, getAllTags } from "@/lib/db";
-import { extractMetadata } from "@/lib/extract";
+import { extractMetadata, extractLinkedInPost } from "@/lib/extract";
 import { detectBookmarkType } from "@/lib/detect-type";
 import { enrichTweet } from "@/lib/ai";
 import { createClient } from "@/lib/supabase-server";
@@ -41,6 +41,37 @@ export async function POST(req: NextRequest) {
     let description = body.description ?? "";
 
     const type = body.type ?? detectBookmarkType(body.url);
+
+    // LinkedIn posts: use metadata from extension, fall back to server-side OG extraction
+    if (type === "linkedin") {
+      const hasExtensionData = body.type_metadata?.post_text || body.type_metadata?.content_html;
+      if (!hasExtensionData) {
+        try {
+          const liPost = await extractLinkedInPost(body.url);
+          if (liPost) {
+            if (!description || description.length < 50) description = liPost.content_text;
+            if (looksLikeUrl(title)) {
+              title = liPost.author
+                ? `${liPost.author}: ${liPost.content_text.slice(0, 100)}`
+                : liPost.content_text.slice(0, 100);
+            }
+            body.type_metadata = {
+              ...body.type_metadata,
+              author: liPost.author,
+              post_text: liPost.content_text,
+              content_html: liPost.content_html,
+            };
+          }
+        } catch {
+          // server-side extraction failed, continue with whatever we have
+        }
+      }
+      const author = body.type_metadata?.author || "";
+      if (looksLikeUrl(title) && author) {
+        const postText = body.description || description || "";
+        title = `${author}: ${postText.slice(0, 100)}`;
+      }
+    }
 
     // For tweets, always use oembed unless title already has @handle: format
     // (X.com is a client-rendered SPA — server-side fetch gets garbage)

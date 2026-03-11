@@ -820,6 +820,33 @@ header nav .nav-add {
   text-decoration: underline;
 }
 
+.reader-linkedin {
+  margin-top: 1.5rem;
+}
+
+.reader-linkedin .reader-content {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+
+.reader-linkedin .reader-content img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.reader-linkedin-link {
+  display: inline-block;
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.reader-linkedin-link:hover {
+  text-decoration: underline;
+}
+
 .reader-video {
   margin-top: 1.5rem;
 }

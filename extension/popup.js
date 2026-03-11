@@ -88,6 +88,14 @@ function isTweetUrl(url) {
   } catch { return false; }
 }
 
+function isLinkedInPostUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace("www.", "");
+    return host === "linkedin.com" && (u.pathname.includes("/posts/") || u.pathname.includes("/pulse/"));
+  } catch { return false; }
+}
+
 async function showSaveView() {
   saveView.style.display = "block";
 
@@ -264,6 +272,108 @@ async function showSaveView() {
       } catch {
         document.getElementById("title").value = tab.title || "";
       }
+    } else if (tab.id && tab.url && isLinkedInPostUrl(tab.url)) {
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+            // Extract author name
+            let author = "";
+            // Try the post author link (usually first strong or span with specific classes)
+            const actorEl = document.querySelector('.feed-shared-actor__name, .update-components-actor__name');
+            if (actorEl) {
+              author = actorEl.textContent?.trim().split("\n")[0]?.trim() || "";
+            }
+            // Fallback: profile page header
+            if (!author) {
+              const profileEl = document.querySelector('h1, .text-heading-xlarge');
+              if (profileEl) author = profileEl.textContent?.trim() || "";
+            }
+
+            // Extract post text
+            let text = "";
+            let contentHtml = "";
+            // LinkedIn post text container
+            const postTextEl = document.querySelector(
+              '.feed-shared-update-v2__description, ' +
+              '.update-components-text, ' +
+              '[data-ad-preview="message"], ' +
+              '.break-words'
+            );
+            if (postTextEl) {
+              text = postTextEl.textContent?.trim() || "";
+              // Build HTML preserving paragraphs and links
+              let html = "";
+              for (const node of postTextEl.childNodes) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                  html += esc(node.textContent || "");
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                  const el = node;
+                  if (el.tagName === "A") {
+                    const href = el.getAttribute("href") || "";
+                    html += '<a href="' + esc(href) + '">' + esc(el.textContent || "") + '</a>';
+                  } else if (el.tagName === "BR") {
+                    html += "<br>";
+                  } else {
+                    html += esc(el.textContent || "");
+                  }
+                }
+              }
+              contentHtml = "<p>" + html + "</p>";
+            }
+
+            // Fallback: grab the biggest text block in the main content area
+            if (!text) {
+              const candidates = document.querySelectorAll('[dir="ltr"] span, .attributed-text-segment-list__container');
+              let best = "";
+              for (const el of candidates) {
+                const t = el.textContent?.trim() || "";
+                if (t.length > best.length) best = t;
+              }
+              if (best.length > 50) {
+                text = best;
+                contentHtml = "<p>" + esc(best) + "</p>";
+              }
+            }
+
+            // Extract images from the post
+            const images = [];
+            const imgEls = document.querySelectorAll(
+              '.feed-shared-image__container img, ' +
+              '.update-components-image img, ' +
+              '.feed-shared-carousel img'
+            );
+            for (const img of imgEls) {
+              const src = img.getAttribute("src");
+              if (src && !src.includes("profile-displayphoto") && !src.includes("1x1")) {
+                images.push(src);
+                contentHtml += '\n<img src="' + esc(src) + '" alt="LinkedIn post image" />';
+              }
+            }
+
+            return { author, text, contentHtml, images };
+          },
+        });
+        const liData = results?.[0]?.result;
+        if (liData?.text) {
+          document.getElementById("description").value = liData.text;
+          document.getElementById("title").value = liData.author
+            ? `${liData.author}: ${liData.text.slice(0, 100)}`
+            : tab.title || liData.text.slice(0, 100);
+          tweetMeta = {
+            author: liData.author || "",
+            post_text: liData.text,
+            content_html: liData.contentHtml || "",
+            media_urls: liData.images || [],
+          };
+        } else {
+          document.getElementById("title").value = tab.title || "";
+        }
+      } catch {
+        document.getElementById("title").value = tab.title || "";
+      }
     } else {
       // Non-tweet: try og:title for better titles on paywalled pages
       let title = tab.title || "";
@@ -387,7 +497,7 @@ saveForm.addEventListener("submit", async (e) => {
     }),
   };
 
-  // Detect tweet URLs and add type metadata
+  // Detect tweet/LinkedIn URLs and add type metadata
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace("www.", "");
@@ -397,6 +507,11 @@ saveForm.addEventListener("submit", async (e) => {
       const handle = parts[1] || "";
       if (handle) {
         data.type_metadata = { author: handle };
+      }
+    } else if (host === "linkedin.com" && (parsed.pathname.includes("/posts/") || parsed.pathname.includes("/pulse/"))) {
+      data.type = "linkedin";
+      if (tweetMeta) {
+        data.type_metadata = tweetMeta;
       }
     }
   } catch {}

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createBookmark, updateBookmark } from "@/lib/db";
-import { uploadToStorage } from "@/lib/storage";
 import { createClient } from "@/lib/supabase-server";
 import { textToHtml } from "@/lib/pdf-html";
 // Import from lib directly to avoid pdf-parse's debug mode test file issue on Vercel
@@ -14,26 +13,29 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const title = (formData.get("title") as string) || "";
+    const body = await req.json();
+    const { storagePath, filename, fileSize } = body as {
+      storagePath: string;
+      filename: string;
+      fileSize: number;
+    };
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    if (!storagePath || !filename) {
+      return NextResponse.json({ error: "Missing storagePath or filename" }, { status: 400 });
     }
 
-    // Validate PDF
-    if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
-      return NextResponse.json({ error: "File must be a PDF" }, { status: 400 });
+    // Download PDF from Supabase Storage to extract text
+    const supabase = await createClient();
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("user-files")
+      .download(storagePath);
+
+    if (downloadError || !fileData) {
+      console.error("Storage download error:", downloadError);
+      return NextResponse.json({ error: "Could not read uploaded file" }, { status: 500 });
     }
 
-    const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: "File too large (50 MB max)" }, { status: 400 });
-    }
-
-    const filename = file.name || "document.pdf";
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = Buffer.from(await fileData.arrayBuffer());
 
     // Extract text from PDF
     let contentText = "";
@@ -44,10 +46,9 @@ export async function POST(req: NextRequest) {
       pageCount = parsed.numpages || 0;
     } catch (parseErr) {
       console.error("PDF parse error:", parseErr);
-      // Continue without extracted text — PDF will still be viewable via iframe
     }
 
-    const displayTitle = title || filename.replace(/\.pdf$/i, "");
+    const displayTitle = filename.replace(/\.pdf$/i, "");
     const wordCount = contentText.split(/\s+/).filter(Boolean).length;
 
     // Create bookmark entry
@@ -57,33 +58,32 @@ export async function POST(req: NextRequest) {
       type: "pdf",
       type_metadata: {
         original_filename: filename,
-        file_size: file.size,
+        file_size: fileSize || buffer.length,
         page_count: pageCount,
         uploaded: true,
       },
       user_id: user.id,
     });
 
-    // Upload PDF to storage
-    const result = await uploadToStorage(
-      user.id,
-      bookmark.id,
-      "document.pdf",
-      buffer,
-      "application/pdf",
-      "pdf_upload",
-    );
+    // Record in stored_media table
+    await supabase.from("stored_media").insert({
+      bookmark_id: bookmark.id,
+      user_id: user.id,
+      storage_path: storagePath,
+      media_type: "pdf_upload",
+      original_url: null,
+      file_size: fileSize || buffer.length,
+      content_type: "application/pdf",
+    });
 
-    if (!result) {
-      return NextResponse.json(
-        { error: "Upload failed — check storage quota" },
-        { status: 500 },
-      );
-    }
+    // Increment storage usage
+    await supabase.rpc("increment_storage_usage", {
+      p_user_id: user.id,
+      p_bytes: fileSize || buffer.length,
+    });
 
     // Store extracted text as archived content for clean reading
     if (contentText.trim().length > 50) {
-      const supabase = await createClient();
       const contentHtml = textToHtml(contentText);
 
       await supabase.from("archived_content").upsert(

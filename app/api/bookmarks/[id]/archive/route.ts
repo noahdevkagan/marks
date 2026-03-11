@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase-server";
 import { textToHtml } from "@/lib/pdf-html";
 import { uploadToStorage } from "@/lib/storage";
 import { enrichArticle, enrichTweet } from "@/lib/ai";
+import { fetchTweetOembed } from "@/lib/twitter";
 
 export const maxDuration = 60;
 
@@ -35,10 +36,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     // Otherwise preserve stored text + download media images as durable backup
     if (bookmark.type === "tweet" && !pageHtml) {
       const supabase = await createClient();
-      const tweetText = bookmark.description || bookmark.title || "";
-      const author = bookmark.type_metadata?.author
+      let tweetText = bookmark.description || bookmark.title || "";
+      let author = bookmark.type_metadata?.author
         ? String(bookmark.type_metadata.author)
         : "";
+
+      // Fallback: if no tweet text, try oembed
+      if (!tweetText.trim()) {
+        const oembed = await fetchTweetOembed(bookmark.url);
+        if (oembed) {
+          tweetText = oembed.text;
+          if (!author) author = oembed.author;
+        }
+      }
       const wordCount = tweetText.split(/\s+/).filter(Boolean).length;
 
       // Build HTML representation of the tweet

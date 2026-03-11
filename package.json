@@ -17,21 +17,22 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "@mozilla/readability": "^0.6.0",
-    "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.98.0",
+    "@supabase/ssr": "^0.9.0",
+    "@supabase/supabase-js": "^2.99.0",
     "dotenv": "^17.3.1",
     "linkedom": "^0.18.12",
     "next": "^16.1.6",
-    "pdf-parse": "^1.1.1",
+    "pdf-parse": "1.1.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-pdf": "^10.4.1"
+    "react-pdf": "^10.4.1",
+    "resend": "^6.9.3"
   },
   "devDependencies": {
-    "@types/node": "^25.3.2",
+    "@types/node": "^25.4.0",
     "@types/react": "^19.2.14",
     "tsx": "^4.21.0",
     "typescript": "5.9.3",
-    "web-ext": "^9.3.0"
+    "web-ext": "^9.4.0"
   }
 }

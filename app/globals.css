@@ -698,8 +698,26 @@ header nav .nav-add {
   align-items: center;
 }
 
-.reader-nav-actions a {
+.reader-nav-actions a,
+.reader-nav-link {
   color: var(--text-muted);
+}
+
+.reader-nav-link {
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.reader-nav-link:hover {
+  color: var(--accent);
+}
+
+.reader-nav-link:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .reader-action-btn {

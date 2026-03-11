@@ -103,6 +103,7 @@ function AddForm() {
       if (!res.ok) return;
       const data = await res.json();
       if (data.title) setTitle((prev) => prev || data.title);
+      if (data.description) setDescription((prev) => prev || data.description);
       if (data.suggestedTags?.length) setSuggestedTags(data.suggestedTags);
     } catch {
       // ignore fetch errors

@@ -254,6 +254,18 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 
   try {
+    // Detect tweet URLs and add type metadata
+    const bookmarkData = { url, title: title || url, is_read: false };
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.replace("www.", "");
+      if ((host === "x.com" || host === "twitter.com") && parsed.pathname.includes("/status/")) {
+        bookmarkData.type = "tweet";
+        const parts = parsed.pathname.split("/");
+        if (parts[1]) bookmarkData.type_metadata = { author: parts[1] };
+      }
+    } catch {}
+
     let token = config.token;
     let res = await fetch(`${API_URL}/api/bookmarks`, {
       method: "POST",

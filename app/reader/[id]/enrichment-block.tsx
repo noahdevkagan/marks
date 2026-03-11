@@ -62,12 +62,6 @@ export function EnrichmentBlock({
       {loading && <div className="enrich-status">Analyzing...</div>}
       {error && <div className="enrich-status" style={{ color: "var(--danger, #c00)" }}>{error}</div>}
 
-      {!loading && !hasContent && (
-        <button className="reader-action-btn enrich-refresh" onClick={reanalyze}>
-          analyze
-        </button>
-      )}
-
       {enrichment?.summary && (
         <div className="enrichment-summary">
           <span className="enrichment-label">Summary</span>

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Marks",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Save bookmarks to Marks with auto-suggested tags. Sync Kindle highlights.",
   "permissions": [
     "activeTab",

@@ -143,7 +143,7 @@ export default function KindlePage() {
 
   // Listen for extension messages
   useEffect(() => {
-    function onMessage(event: MessageEvent) {
+    async function onMessage(event: MessageEvent) {
       if (event.source !== window || !event.data?.type) return;
 
       switch (event.data.type) {

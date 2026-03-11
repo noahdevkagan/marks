@@ -70,6 +70,18 @@ enum UITestSeeder {
 
         try? context.save()
 
+        // Attach cached HTML to the first bookmark so ReaderView has content for screenshots
+        if let first = try? context.fetch(FetchDescriptor<Bookmark>(predicate: #Predicate { $0.id == 1 })).first {
+            let cached = CachedContent(bookmarkID: 1, html: """
+                <p>The first step is to decide what to work on. The work you choose needs to have three qualities: it has to be something you have a natural aptitude for, that you have a deep interest in, and that offers scope to do great work.</p>
+                <p>In practice you don't have to worry much about the third criterion. Ambitious people are if anything already too conservative about it. So all you need to do is find something you have an aptitude for and great interest in.</p>
+                <p>That sounds straightforward, but it's often quite difficult. When you're young you don't know what you're good at or what different kinds of work are like.</p>
+                """, plainText: "The first step is to decide what to work on.")
+            context.insert(cached)
+            first.cachedContent = cached
+            try? context.save()
+        }
+
         // Store a fake email for Settings screen
         UserDefaults.standard.set("you@marks.app", forKey: "userEmail")
         UserDefaults.standard.set(Date.now, forKey: "lastSyncDate")

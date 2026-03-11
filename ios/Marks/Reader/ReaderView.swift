@@ -83,6 +83,13 @@ struct ReaderView: View {
     }
 
     private func fetchReaderContent() async {
+        // During UI tests, skip the network call — seeded bookmarks with
+        // cachedContent will already have readerHTML populated.
+        guard !UITestSeeder.isUITest else {
+            fetchFailed = true
+            return
+        }
+
         isFetching = true
         defer { isFetching = false }
 

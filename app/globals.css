@@ -1343,6 +1343,20 @@ header nav .nav-add {
   font-size: 0.8125rem;
 }
 
+.kindle-server-error {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.625rem 0.875rem;
+  margin-bottom: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: #fca5a5;
+}
+
 .kindle-sync-status {
   display: flex;
   align-items: center;

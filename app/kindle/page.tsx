@@ -33,15 +33,16 @@ const HIGHLIGHT_COLORS: Record<string, { bg: string; border: string }> = {
   orange: { bg: "rgba(249, 115, 22, 0.12)", border: "#f97316" },
 };
 
-async function saveToServer(kindleData: KindleData) {
+async function saveToServer(kindleData: KindleData): Promise<boolean> {
   try {
-    await fetch("/api/kindle", {
+    const res = await fetch("/api/kindle", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ data: kindleData }),
     });
+    return res.ok;
   } catch {
-    // Server save failed silently — localStorage still has the data
+    return false;
   }
 }
 
@@ -64,6 +65,8 @@ export default function KindlePage() {
   const [syncMessage, setSyncMessage] = useState("");
   const [extensionReady, setExtensionReady] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [serverSaveFailed, setServerSaveFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   // Load data: try localStorage first, then fetch from server
   useEffect(() => {
@@ -103,7 +106,7 @@ export default function KindlePage() {
 
   // Listen for extension messages
   useEffect(() => {
-    function onMessage(event: MessageEvent) {
+    async function onMessage(event: MessageEvent) {
       if (event.source !== window || !event.data?.type) return;
 
       switch (event.data.type) {
@@ -123,8 +126,10 @@ export default function KindlePage() {
           setData(payload);
           setSyncing(false);
           setSyncMessage("");
+          setServerSaveFailed(false);
           // Save to server for cross-device access
-          saveToServer(payload);
+          const ok = await saveToServer(payload);
+          if (!ok) setServerSaveFailed(true);
           break;
         }
       }
@@ -139,6 +144,14 @@ export default function KindlePage() {
 
     return () => window.removeEventListener("message", onMessage);
   }, []);
+
+  async function retryServerSave() {
+    if (!data || retrying) return;
+    setRetrying(true);
+    const ok = await saveToServer(data);
+    setRetrying(false);
+    if (ok) setServerSaveFailed(false);
+  }
 
   function startSync() {
     if (syncing || !extensionReady) return;
@@ -324,6 +337,20 @@ export default function KindlePage() {
           </button>
         )}
       </div>
+
+      {/* Server save error */}
+      {serverSaveFailed && (
+        <div className="kindle-server-error">
+          <span>Highlights saved locally but failed to sync to server. They won&apos;t appear on other devices.</span>
+          <button
+            onClick={retryServerSave}
+            disabled={retrying}
+            className="kindle-sync-link"
+          >
+            {retrying ? "Retrying..." : "Retry"}
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="search-container">

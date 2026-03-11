@@ -125,6 +125,19 @@ export default async function Home({
       )}
 
       <Bookmarklet />
+
+      <div className="chrome-extension-section">
+        <p className="bookmarklet-label">
+          Chrome extension &rarr;{" "}
+          <a href="/marks-extension.zip" className="bookmarklet-link" download>
+            Download
+          </a>
+        </p>
+        <p className="chrome-extension-hint">
+          Unzip, then go to <code>chrome://extensions</code> → Enable Developer
+          Mode → Load unpacked
+        </p>
+      </div>
     </div>
   );
 }

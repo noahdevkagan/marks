@@ -2043,6 +2043,24 @@ header nav .nav-add {
   border-color: var(--accent);
 }
 
+/* Chrome Extension */
+.chrome-extension-section {
+  margin-top: 1rem;
+}
+
+.chrome-extension-hint {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  margin-top: 0.25rem;
+}
+
+.chrome-extension-hint code {
+  font-size: 0.75rem;
+  background: var(--tag-bg);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
 /* Stats page */
 .stats-container {
   max-width: 640px;

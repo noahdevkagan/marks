@@ -88,6 +88,14 @@ function isTweetUrl(url) {
   } catch { return false; }
 }
 
+function isLinkedInPostUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace("www.", "");
+    return host === "linkedin.com" && (u.pathname.includes("/posts/") || u.pathname.includes("/feed/update/"));
+  } catch { return false; }
+}
+
 async function showSaveView() {
   saveView.style.display = "block";
 
@@ -260,6 +268,52 @@ async function showSaveView() {
             media_urls: tweetData.mediaUrls || [],
             ...(tweetData.isArticle && { x_article: true }),
           };
+        }
+      } catch {
+        document.getElementById("title").value = tab.title || "";
+      }
+    } else if (tab.id && tab.url && isLinkedInPostUrl(tab.url)) {
+      // LinkedIn post: extract author + post text from DOM
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            // Find the main post container — try permalink overlay first, then feed
+            const post = document.querySelector('.scaffold-finite-scroll__content .feed-shared-update-v2')
+              || document.querySelector('.feed-shared-update-v2')
+              || document.querySelector('[data-urn]');
+
+            // Author name
+            const authorEl = post?.querySelector('.update-components-actor__name span[aria-hidden="true"]')
+              || post?.querySelector('.feed-shared-actor__name span[aria-hidden="true"]')
+              || document.querySelector('.update-components-actor__name span[aria-hidden="true"]')
+              || document.querySelector('.feed-shared-actor__name span[aria-hidden="true"]');
+            const author = authorEl?.textContent?.trim() || "";
+
+            // Post text
+            const textEl = post?.querySelector('.update-components-text .break-words')
+              || post?.querySelector('.feed-shared-update-v2__description .break-words')
+              || post?.querySelector('.break-words')
+              || document.querySelector('.update-components-text .break-words')
+              || document.querySelector('.feed-shared-update-v2__description .break-words');
+            const text = textEl?.innerText?.trim() || "";
+
+            return { author, text };
+          },
+        });
+        const li = results?.[0]?.result;
+        if (li) {
+          // Build title from author + first line of post
+          const firstLine = (li.text || "").split("\n")[0].substring(0, 120);
+          const title = li.author
+            ? li.author + (firstLine ? ": " + firstLine : "")
+            : firstLine || tab.title || "";
+          document.getElementById("title").value = title;
+          if (li.text) {
+            document.getElementById("description").value = li.text;
+          }
+        } else {
+          document.getElementById("title").value = tab.title || "";
         }
       } catch {
         document.getElementById("title").value = tab.title || "";

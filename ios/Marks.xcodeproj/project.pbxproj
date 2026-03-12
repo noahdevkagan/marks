@@ -439,6 +439,7 @@
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = U433SX7BT8;
 				INFOPLIST_FILE = Marks/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Marks;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -459,6 +460,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = U433SX7BT8;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Save to Marks";
 				INFOPLIST_KEY_NSExtension = "";
@@ -478,6 +480,7 @@
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = U433SX7BT8;
 				INFOPLIST_FILE = Marks/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Marks;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -552,6 +555,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = U433SX7BT8;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Save to Marks";
 				INFOPLIST_KEY_NSExtension = "";

@@ -66,7 +66,9 @@ struct BookmarkDetailView: View {
 
                 Button {
                     bookmark.isRead.toggle()
-                    bookmark.syncStatus = .modified
+                    if bookmark.syncStatus == .synced {
+                        bookmark.syncStatus = .modified
+                    }
                     try? context.save()
                 } label: {
                     Label(
@@ -77,7 +79,9 @@ struct BookmarkDetailView: View {
 
                 Button {
                     bookmark.isArchived.toggle()
-                    bookmark.syncStatus = .modified
+                    if bookmark.syncStatus == .synced {
+                        bookmark.syncStatus = .modified
+                    }
                     try? context.save()
                 } label: {
                     Label(

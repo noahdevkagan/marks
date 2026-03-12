@@ -31,11 +31,11 @@ final class SupabaseService {
     private var isRefreshing = false
 
     private func request(_ path: String, method: String = "GET", body: Data? = nil, query: [String: String] = [:], allowRetry: Bool = true) async throws -> Data {
-        let data = try await rawRequest(path, method: method, body: body, query: query)
+        let data = try await rawRequest(path, method: method, body: body, query: query, allowRetry: allowRetry)
         return data
     }
 
-    private func rawRequest(_ path: String, method: String = "GET", body: Data? = nil, query: [String: String] = [:]) async throws -> Data {
+    private func rawRequest(_ path: String, method: String = "GET", body: Data? = nil, query: [String: String] = [:], allowRetry: Bool = true) async throws -> Data {
         var components = URLComponents(string: baseURL + path)!
         if !query.isEmpty {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
@@ -60,9 +60,9 @@ final class SupabaseService {
         }
 
         // On 401, try refreshing the token once and retry
-        if http.statusCode == 401, !isRefreshing {
+        if http.statusCode == 401, allowRetry, !isRefreshing {
             if try await refreshSession() {
-                return try await rawRequest(path, method: method, body: body, query: query)
+                return try await rawRequest(path, method: method, body: body, query: query, allowRetry: false)
             }
             throw SupabaseError.unauthorized
         }
@@ -255,7 +255,14 @@ final class SupabaseService {
         let title: String
         let description: String
         let tags: [String]
+
+        /// Encodes only the bookmark columns (not tags, which go in the junction table).
+        private enum CodingKeys: String, CodingKey {
+            case url, title, description
+        }
     }
+
+    private struct TagIDRow: Decodable { let id: Int }
 
     func createBookmark(_ insert: BookmarkInsert) async throws -> BookmarkRow {
         var components = URLComponents(string: baseURL + "/rest/v1/bookmarks")!
@@ -275,7 +282,42 @@ final class SupabaseService {
         }
         let rows = try decoder.decode([BookmarkRow].self, from: data)
         guard let row = rows.first else { throw SupabaseError.api("No row returned") }
+
+        // Insert tags via the junction table
+        if !insert.tags.isEmpty {
+            try await setBookmarkTags(bookmarkID: row.id, tags: insert.tags)
+        }
+
         return row
+    }
+
+    /// Resolve tag names to IDs (get-or-create) and insert into bookmark_tags junction table.
+    private func setBookmarkTags(bookmarkID: Int, tags: [String]) async throws {
+        for tagName in tags {
+            // Upsert the tag (insert if not exists, return existing)
+            let tagBody = try JSONEncoder().encode(["name": tagName])
+            var upsertComponents = URLComponents(string: baseURL + "/rest/v1/tags")!
+            upsertComponents.queryItems = [
+                URLQueryItem(name: "on_conflict", value: "name"),
+                URLQueryItem(name: "select", value: "id")
+            ]
+            var upsertReq = URLRequest(url: upsertComponents.url!)
+            upsertReq.httpMethod = "POST"
+            upsertReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            upsertReq.setValue(apiKey, forHTTPHeaderField: "apikey")
+            upsertReq.setValue("Bearer \(accessToken ?? apiKey)", forHTTPHeaderField: "Authorization")
+            upsertReq.setValue("return=representation,resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
+            upsertReq.httpBody = tagBody
+
+            let (tagData, _) = try await URLSession.shared.data(for: upsertReq)
+            let tagRows = try decoder.decode([TagIDRow].self, from: tagData)
+            guard let tagID = tagRows.first?.id else { continue }
+
+            // Insert into junction table (ignore duplicates)
+            struct JunctionInsert: Encodable { let bookmark_id: Int; let tag_id: Int }
+            let junctionBody = try JSONEncoder().encode(JunctionInsert(bookmark_id: bookmarkID, tag_id: tagID))
+            _ = try? await request("/rest/v1/bookmark_tags", method: "POST", body: junctionBody)
+        }
     }
 
     struct BookmarkUpdate: Encodable {

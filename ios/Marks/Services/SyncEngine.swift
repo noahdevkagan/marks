@@ -6,13 +6,38 @@ final class SyncEngine {
     private let supabase = SupabaseService.shared
 
     func sync(context: ModelContext) async throws {
-        // 1. Push local pending changes
+        // 1. Import bookmarks saved via the share extension
+        importShareExtensionQueue(context: context)
+
+        // 2. Push local pending changes
         try await pushPending(context: context)
 
-        // 2. Pull remote changes
+        // 3. Pull remote changes
         try await pullRemote(context: context)
 
         try context.save()
+    }
+
+    /// Import bookmarks queued by the share extension via shared UserDefaults.
+    private func importShareExtensionQueue(context: ModelContext) {
+        let defaults = UserDefaults(suiteName: Config.appGroupID)
+        guard let queue = defaults?.array(forKey: "pendingBookmarks") as? [[String: String]],
+              !queue.isEmpty else { return }
+
+        for entry in queue {
+            guard let url = entry["url"] else { continue }
+            let title = entry["title"] ?? url
+            let bookmark = Bookmark(
+                id: Int.random(in: 100_000...999_999),
+                url: url,
+                title: title,
+                syncStatus: .pending
+            )
+            context.insert(bookmark)
+        }
+
+        // Clear the queue after importing
+        defaults?.removeObject(forKey: "pendingBookmarks")
     }
 
     // MARK: — Push local → remote

@@ -3,7 +3,7 @@
 
 # Metadata
 username(ENV["FASTLANE_USER"] || "")
-app_identifier("com.marks.app")
+app_identifier("com.noah.Marks")
 
 # Metadata directory
 metadata_path("./fastlane/metadata")

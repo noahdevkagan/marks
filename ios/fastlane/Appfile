@@ -1,4 +1,4 @@
-app_identifier("com.marks.app")
-# apple_id("your@email.com")       # Your Apple Developer email
-# team_id("XXXXXXXXXX")            # Your Apple Developer Team ID
-# itc_team_id("XXXXXXXXXX")        # Your App Store Connect Team ID (if different)
+app_identifier("com.noah.Marks")
+apple_id("apple@okdork.com")
+team_id("U433SX7BT8")
+itc_team_id("U433SX7BT8")

@@ -28,7 +28,7 @@
 ## iOS App (`ios/`)
 - **SwiftUI + SwiftData** app targeting iOS 17+
 - **Supabase** sync via REST (no Swift SDK — uses URLSession)
-- **Bundle ID**: `com.marks.app` (share extension: `com.marks.app.share`)
+- **Bundle ID**: `com.noah.Marks` (share extension: `com.noah.Marks.share`)
 - **App Group**: `group.com.noah.Marks` (shared UserDefaults between app + share extension)
 - Config in `ios/Marks/Config.swift`
 
@@ -39,9 +39,9 @@
 - [x] Fastlane lanes: `screenshots`, `beta`, `release`, `ship`
 - [x] Privacy policy at `/privacy` (covers web + iOS)
 - [x] Support page at `/support`
-- [ ] **Fill in Apple Developer Team ID** in `ios/fastlane/Appfile`
-- [ ] **Create app record** in App Store Connect (bundle ID: `com.marks.app`)
-- [ ] **Create demo account** for App Review (update `ios/fastlane/Deliverfile`)
+- [x] **Fill in Apple Developer Team ID** in `ios/fastlane/Appfile`
+- [x] **Create app record** in App Store Connect (bundle ID: `com.noah.Marks`)
+- [x] **Create demo account** for App Review (update `ios/fastlane/Deliverfile`)
 - [ ] **Take screenshots** manually, put in `ios/fastlane/screenshots/`
 - [ ] **Archive + upload** from Xcode or run `fastlane beta`
 

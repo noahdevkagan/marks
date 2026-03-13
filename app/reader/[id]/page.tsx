@@ -207,9 +207,20 @@ export default async function ReaderPage({ params }: Props) {
         </header>
 
         {bookmark.type === "tweet" ? (() => {
-          const contentHtml = bookmark.type_metadata?.content_html
+          let contentHtml = bookmark.type_metadata?.content_html
             ? String(bookmark.type_metadata.content_html)
             : "";
+          // Improve readability: split <p> blocks containing <br> into separate paragraphs
+          if (contentHtml) {
+            contentHtml = contentHtml.replace(
+              /<p>([\s\S]*?)<\/p>/g,
+              (_match: string, inner: string) => {
+                const parts = inner.split(/<br\s*\/?>/i).map((s: string) => s.trim()).filter(Boolean);
+                if (parts.length <= 1) return `<p>${inner}</p>`;
+                return parts.map((p: string) => `<p>${p}</p>`).join("\n");
+              }
+            );
+          }
           const tweetText =
             bookmark.description ||
             (bookmark.type_metadata?.tweet_text ? String(bookmark.type_metadata.tweet_text) : "") ||

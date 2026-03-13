@@ -54,28 +54,31 @@ function extractTweetContentFromPage() {
     return null;
   }
   function extractTweetTextHtml(textEl) {
-    let html = "";
-    for (const node of textEl.childNodes) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        html += esc(node.textContent || "");
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node;
-        if (el.tagName === "A" || el.querySelector("a")) {
-          const a = el.tagName === "A" ? el : el.querySelector("a");
-          const href = a?.getAttribute("href") || "";
-          const text = el.textContent || "";
-          const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
-          html += '<a href="' + esc(fullHref) + '">' + esc(text) + "</a>";
-        } else if (el.tagName === "IMG") {
-          html += el.alt || "";
-        } else if (el.tagName === "BR") {
-          html += "<br>";
-        } else {
-          html += esc(el.textContent || "");
+    function walk(parent) {
+      let html = "";
+      for (const node of parent.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          html += esc(node.textContent || "");
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node;
+          if (el.tagName === "BR") {
+            html += "<br>";
+          } else if (el.tagName === "IMG") {
+            html += el.alt || "";
+          } else if (el.tagName === "A" || el.querySelector("a")) {
+            const a = el.tagName === "A" ? el : el.querySelector("a");
+            const href = a?.getAttribute("href") || "";
+            const text = el.textContent || "";
+            const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
+            html += '<a href="' + esc(fullHref) + '">' + esc(text) + "</a>";
+          } else {
+            html += walk(el);
+          }
         }
       }
+      return html;
     }
-    return "<p>" + html + "</p>";
+    return "<p>" + walk(textEl) + "</p>";
   }
 
   function getHandle(articleEl) {

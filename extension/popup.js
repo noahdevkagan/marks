@@ -218,22 +218,25 @@ async function showSaveView() {
             const handle = getHandle();
             let contentHtml = "";
             if (textEl) {
-              let html = "";
-              for (const node of textEl.childNodes) {
-                if (node.nodeType === Node.TEXT_NODE) { html += esc(node.textContent || ""); }
-                else if (node.nodeType === Node.ELEMENT_NODE) {
-                  const el = node;
-                  if (el.tagName === "A" || el.querySelector("a")) {
-                    const a = el.tagName === "A" ? el : el.querySelector("a");
-                    const href = a?.getAttribute("href") || "";
-                    const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
-                    html += '<a href="' + esc(fullHref) + '">' + esc(el.textContent || "") + "</a>";
-                  } else if (el.tagName === "IMG") { html += el.alt || ""; }
-                  else if (el.tagName === "BR") { html += "<br>"; }
-                  else { html += esc(el.textContent || ""); }
+              function walkTweet(parent) {
+                let h = "";
+                for (const node of parent.childNodes) {
+                  if (node.nodeType === Node.TEXT_NODE) { h += esc(node.textContent || ""); }
+                  else if (node.nodeType === Node.ELEMENT_NODE) {
+                    const el = node;
+                    if (el.tagName === "BR") { h += "<br>"; }
+                    else if (el.tagName === "IMG") { h += el.alt || ""; }
+                    else if (el.tagName === "A" || el.querySelector("a")) {
+                      const a = el.tagName === "A" ? el : el.querySelector("a");
+                      const href = a?.getAttribute("href") || "";
+                      const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
+                      h += '<a href="' + esc(fullHref) + '">' + esc(el.textContent || "") + "</a>";
+                    } else { h += walkTweet(el); }
+                  }
                 }
+                return h;
               }
-              contentHtml = "<p>" + html + "</p>";
+              contentHtml = "<p>" + walkTweet(textEl) + "</p>";
               const imgs = article?.querySelectorAll('img[src*="pbs.twimg.com"]') || [];
               for (const img of imgs) {
                 if (!img.src.includes("profile_images")) {

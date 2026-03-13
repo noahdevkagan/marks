@@ -1,0 +1,31 @@
+# App Store delivery configuration
+# Uncomment apple_id/team_id in Appfile before using
+
+# Metadata
+username(ENV["FASTLANE_USER"] || "")
+app_identifier("com.noah.Marks")
+
+# Metadata directory
+metadata_path("./fastlane/metadata")
+screenshots_path("./fastlane/screenshots")
+
+# Submission settings
+submit_for_review(false)
+automatic_release(false)
+skip_binary_upload(false)
+
+# App review info (demo account for reviewer)
+app_review_information(
+  demo_user: "reviewer@marks.app",
+  demo_password: "ReviewMarks2026!"
+)
+
+# Pricing
+price_tier(0)  # Free
+
+# App rating
+app_rating_config_path("./fastlane/rating_config.json")
+
+# Categories
+primary_category("UTILITIES")
+secondary_category("PRODUCTIVITY")

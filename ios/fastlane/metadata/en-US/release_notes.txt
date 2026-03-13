@@ -1,0 +1,7 @@
+Initial release of Marks for iOS.
+
+- Save bookmarks from any app via the share extension
+- Clean reader view for articles, tweets, and PDFs
+- Tag-based organization with search
+- Offline reading with local content caching
+- Secure sync powered by Supabase

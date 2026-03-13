@@ -1587,12 +1587,71 @@ header nav .nav-add {
   color: var(--text-faint);
 }
 
+/* Bottom nav — hidden on desktop */
+.mobile-bottom-nav {
+  display: none;
+}
+
 /* Mobile */
 @media (max-width: 600px) {
   .container {
-    padding: 1.25rem 0.75rem;
+    padding: 1.25rem 0.75rem 5rem;
   }
 
+  /* ── Bottom tab bar ── */
+  .mobile-bottom-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    padding: 0.375rem 0;
+    padding-bottom: calc(0.375rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    min-height: 44px;
+    min-width: 64px;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 0.625rem;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .bottom-nav-item:hover {
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .bottom-nav-fab {
+    width: 52px;
+    height: 52px;
+    min-height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    transform: translateY(-12px);
+    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.35);
+    flex-direction: row;
+    gap: 0;
+  }
+
+  .bottom-nav-fab:hover {
+    color: #fff;
+    background: var(--accent-hover);
+  }
+
+  /* ── Header: scrollable nav pills ── */
   header {
     flex-direction: column;
     align-items: flex-start;
@@ -1600,12 +1659,101 @@ header nav .nav-add {
   }
 
   header nav {
-    gap: 1rem;
-    flex-wrap: wrap;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+  }
+
+  header nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  header nav a {
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    padding: 0.375rem 0.875rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    font-size: 0.8125rem;
+    text-decoration: none;
+  }
+
+  header nav a:hover {
+    background: var(--border);
+    text-decoration: none;
+  }
+
+  .nav-add,
+  .nav-settings {
+    display: none !important;
+  }
+
+  /* ── Card-style bookmarks ── */
+  .bookmark-item {
+    border-bottom: none;
+    background: var(--bg-surface);
+    border-radius: 10px;
+    padding: 0.875rem;
+    margin-bottom: 0.625rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .bookmark-list {
+    gap: 0;
+  }
+
+  /* ── Better touch targets ── */
+  .tag {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
   }
 
   .tag-list {
-    gap: 0.25rem;
+    gap: 0.375rem;
+  }
+
+  .tag-list .tag {
+    min-height: 36px;
+    font-size: 0.8125rem;
+  }
+
+  .edit-btn,
+  .delete-btn {
+    min-height: 36px;
+    min-width: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+  }
+
+  .pagination a,
+  .pagination span {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Search ── */
+  .search-input {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    background: var(--bg-surface);
+  }
+
+  /* ── Hide bookmarklet on mobile ── */
+  .bookmarklet-section {
+    display: none;
   }
 
   .bookmark-meta {

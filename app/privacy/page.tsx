@@ -16,11 +16,11 @@ export default function PrivacyPage() {
 
       <h2>What Marks Does</h2>
       <p>
-        Marks is a bookmark manager with a browser extension. It lets you save
-        web pages as bookmarks with tags and notes, archive page content for
-        offline reading, sync Kindle highlights from Amazon, and get AI-powered
-        tag suggestions. The extension connects to your Marks account to store
-        and retrieve your data.
+        Marks is a bookmark manager with a browser extension and iOS app. It
+        lets you save web pages as bookmarks with tags and notes, archive page
+        content for offline reading, sync Kindle highlights from Amazon, and
+        get AI-powered tag suggestions. The extension and app connect to your
+        Marks account to store and retrieve your data.
       </p>
 
       <h2>Data We Collect</h2>
@@ -143,8 +143,9 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Local data</strong> — authentication tokens (access token and
-          refresh token) are stored in Chrome&apos;s extension storage on your
-          device. These are never transmitted to third parties.
+          refresh token) are stored in Chrome&apos;s extension storage or on
+          your iOS device. The iOS app caches content locally using SwiftData
+          for offline reading. These are never transmitted to third parties.
         </li>
         <li>
           <strong>Supabase authentication</strong> — your Supabase API key is

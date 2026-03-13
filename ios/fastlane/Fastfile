@@ -1,0 +1,39 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Take App Store screenshots"
+  lane :screenshots do
+    # Run each device separately to avoid simultaneous simulator launch crash
+    ["iPhone 17 Pro Max", "iPhone 17 Pro"].each do |device|
+      capture_screenshots(devices: [device])
+    end
+  end
+
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    increment_build_number
+    build_app(
+      scheme: "Marks",
+      export_method: "app-store"
+    )
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+
+  desc "Upload metadata and screenshots to App Store"
+  lane :release do
+    deliver(
+      skip_binary_upload: true,
+      force: true
+    )
+  end
+
+  desc "Full release: build, upload binary + metadata"
+  lane :ship do
+    increment_build_number
+    build_app(
+      scheme: "Marks",
+      export_method: "app-store"
+    )
+    deliver(force: true)
+  end
+end

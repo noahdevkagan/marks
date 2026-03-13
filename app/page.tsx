@@ -74,7 +74,16 @@ export default async function Home({
               <Link href="/">Show all</Link>
             </p>
           ) : (
-            <p>No bookmarks yet.</p>
+            <>
+              <p>No bookmarks yet.</p>
+              <p style={{ marginTop: "0.5rem" }}>
+                Get the{" "}
+                <a href="/marks-extension.zip" download>
+                  Chrome extension
+                </a>{" "}
+                to save bookmarks from any page.
+              </p>
+            </>
           )}
         </div>
       ) : (

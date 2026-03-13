@@ -12,6 +12,109 @@ import { ReadingTracker } from "./reading-tracker";
 
 type Props = { params: Promise<{ id: string }> };
 
+/** Strip LinkedIn reactions/comments and reformat post content for readability */
+function cleanLinkedInHtml(html: string, url: string): string {
+  if (!/linkedin\.com/.test(url)) return html;
+
+  // 1. Strip everything from "Reactions" / "Comments" section onward
+  const stripPatterns = [
+    /<[a-z][^>]*>\s*Reactions\s*<\/[a-z]+>\s*[\s\S]*/i,
+    /<[a-z][^>]*>\s*Comments\s*<\/[a-z]+>\s*[\s\S]*/i,
+    /<[a-z][^>]*>\s*Activity\s*<\/[a-z]+>\s*[\s\S]*/i,
+    /<[a-z][^>]*>\s*<[a-z][^>]*>\s*Reactions\s*<\/[a-z]+>\s*<\/[a-z]+>\s*[\s\S]*/i,
+    /<[a-z][^>]*>\s*<[a-z][^>]*>\s*Comments\s*<\/[a-z]+>\s*<\/[a-z]+>\s*[\s\S]*/i,
+  ];
+  let cleaned = html;
+  for (const pat of stripPatterns) {
+    cleaned = cleaned.replace(pat, "");
+  }
+
+  // 2. Extract plain text from the cleaned HTML, then reformat with structure
+  // Decode entities BEFORE stripping tags so entity-encoded markup gets caught
+  const text = cleaned
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .trim();
+
+  if (!text) return cleaned;
+
+  // 3. Rebuild as formatted HTML with proper paragraphs and lists
+  // Filter out empty lines but track gaps for paragraph breaks
+  const rawLines = text.split(/\n/);
+  const lines: { text: string; gapBefore: boolean }[] = [];
+  let gap = false;
+  for (const raw of rawLines) {
+    const t = raw.trim();
+    if (!t) { gap = true; continue; }
+    lines.push({ text: t, gapBefore: gap });
+    gap = false;
+  }
+
+  const blocks: string[] = [];
+  let currentList: string[] = [];
+  let listType: "ol" | "ul" | null = null;
+
+  function flushList() {
+    if (currentList.length > 0 && listType) {
+      blocks.push(`<${listType}>${currentList.map(li => `<li>${li}</li>`).join("")}</${listType}>`);
+      currentList = [];
+      listType = null;
+    }
+  }
+
+  function isListItem(t: string): "ol" | "ul" | null {
+    if (/^\d+\.\s+/.test(t)) return "ol";
+    if (/^[-•·]\s+/.test(t)) return "ul";
+    return null;
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const { text: line, gapBefore } = lines[i];
+
+    const itemType = isListItem(line);
+
+    // If we're in a list and hit a gap, only flush if next line isn't the same list type
+    if (gapBefore && listType && itemType !== listType) {
+      flushList();
+    }
+
+    if (itemType === "ol") {
+      if (listType !== "ol") flushList();
+      listType = "ol";
+      currentList.push(line.replace(/^\d+\.\s+/, ""));
+      continue;
+    }
+
+    if (itemType === "ul") {
+      if (listType !== "ul") flushList();
+      listType = "ul";
+      currentList.push(line.replace(/^[-•·]\s+/, ""));
+      continue;
+    }
+
+    flushList();
+
+    // Short lines without ending punctuation → subheading
+    if (line.length < 80 && !/[.!?:,;'"]$/.test(line) && /[A-Z]/.test(line[0])) {
+      blocks.push(`<h3>${line}</h3>`);
+    } else {
+      blocks.push(`<p>${line}</p>`);
+    }
+  }
+  flushList();
+
+  return blocks.join("\n");
+}
+
 function getYouTubeId(url: string): string {
   try {
     const u = new URL(url);
@@ -192,7 +295,7 @@ export default async function ReaderPage({ params }: Props) {
         ) : archived ? (
           <div
             className="reader-content"
-            dangerouslySetInnerHTML={{ __html: archived.content_html }}
+            dangerouslySetInnerHTML={{ __html: cleanLinkedInHtml(archived.content_html, bookmark.url) }}
           />
         ) : (
           <div className="reader-empty">

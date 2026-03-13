@@ -269,15 +269,58 @@ async function showSaveView() {
       let title = tab.title || "";
       if (tab.id) {
         try {
+          const isLinkedIn = tab.url && /linkedin\.com/.test(tab.url);
           const results = await chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            func: () => {
+            func: (isLI) => {
+              // LinkedIn: extract first line of post text as title
+              if (isLI) {
+                // Try multiple selectors — LinkedIn changes DOM frequently
+                const selectors = [
+                  '.feed-shared-update-v2__description',
+                  '.update-components-text',
+                  '[data-ad-preview="message"]',
+                  '.break-words',
+                  // Broader: any span.break-words inside the main content
+                  '.feed-shared-update-v2 .break-words',
+                  '.feed-shared-inline-show-more-text',
+                  // Post detail page
+                  '.attributed-text-segment-list__content',
+                ];
+                for (const sel of selectors) {
+                  const el = document.querySelector(sel);
+                  if (el) {
+                    const text = el.innerText?.trim() || "";
+                    const firstLine = text.split('\n').find(l => l.trim().length > 0) || "";
+                    if (firstLine.length > 3) {
+                      return firstLine.length > 120 ? firstLine.slice(0, 117) + "..." : firstLine;
+                    }
+                  }
+                }
+                // Last resort: find the largest text block in the main feed area
+                const allSpans = document.querySelectorAll('span[dir="ltr"], span.break-words, div.break-words');
+                let best = "";
+                for (const span of allSpans) {
+                  const t = span.innerText?.trim() || "";
+                  if (t.length > best.length && t.length > 20) best = t;
+                }
+                if (best) {
+                  const firstLine = best.split('\n').find(l => l.trim().length > 0) || "";
+                  if (firstLine.length > 3) {
+                    return firstLine.length > 120 ? firstLine.slice(0, 117) + "..." : firstLine;
+                  }
+                }
+              }
               const og = document.querySelector('meta[property="og:title"]');
-              return og?.getAttribute("content") || "";
+              const ogContent = og?.getAttribute("content") || "";
+              // Skip generic LinkedIn og:titles
+              if (ogContent && !["Home", "Feed", "LinkedIn"].includes(ogContent)) return ogContent;
+              return "";
             },
+            args: [isLinkedIn],
           });
-          const ogTitle = results?.[0]?.result;
-          if (ogTitle && ogTitle.length > 3) title = ogTitle;
+          const extractedTitle = results?.[0]?.result;
+          if (extractedTitle && extractedTitle.length > 3) title = extractedTitle;
         } catch {
           // scripting may fail on chrome:// pages etc — use tab.title
         }

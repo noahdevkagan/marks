@@ -235,18 +235,55 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       }
     }
 
-    // Try og:title for better titles on non-tweet pages
+    // Try og:title for better titles on non-tweet pages, or first line for LinkedIn
     if (!saveBody.description) {
       try {
+        const isLinkedIn = /linkedin\.com/.test(url);
         const results = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          func: () => {
+          func: (isLI) => {
+            if (isLI) {
+              const selectors = [
+                '.feed-shared-update-v2__description',
+                '.update-components-text',
+                '[data-ad-preview="message"]',
+                '.break-words',
+                '.feed-shared-update-v2 .break-words',
+                '.feed-shared-inline-show-more-text',
+                '.attributed-text-segment-list__content',
+              ];
+              for (const sel of selectors) {
+                const el = document.querySelector(sel);
+                if (el) {
+                  const text = el.innerText?.trim() || "";
+                  const firstLine = text.split('\n').find(l => l.trim().length > 0) || "";
+                  if (firstLine.length > 3) {
+                    return firstLine.length > 120 ? firstLine.slice(0, 117) + "..." : firstLine;
+                  }
+                }
+              }
+              const allSpans = document.querySelectorAll('span[dir="ltr"], span.break-words, div.break-words');
+              let best = "";
+              for (const span of allSpans) {
+                const t = span.innerText?.trim() || "";
+                if (t.length > best.length && t.length > 20) best = t;
+              }
+              if (best) {
+                const firstLine = best.split('\n').find(l => l.trim().length > 0) || "";
+                if (firstLine.length > 3) {
+                  return firstLine.length > 120 ? firstLine.slice(0, 117) + "..." : firstLine;
+                }
+              }
+            }
             const og = document.querySelector('meta[property="og:title"]');
-            return og?.getAttribute("content") || "";
+            const ogContent = og?.getAttribute("content") || "";
+            if (ogContent && !["Home", "Feed", "LinkedIn"].includes(ogContent)) return ogContent;
+            return "";
           },
+          args: [isLinkedIn],
         });
-        const ogTitle = results?.[0]?.result;
-        if (ogTitle && ogTitle.length > 3) saveBody.title = ogTitle;
+        const extractedTitle = results?.[0]?.result;
+        if (extractedTitle && extractedTitle.length > 3) saveBody.title = extractedTitle;
       } catch {
         // scripting may fail on some pages
       }

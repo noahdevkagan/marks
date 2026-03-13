@@ -137,6 +137,43 @@ function parseWithReadability(
   try {
     const { document } = parseHTML(html);
 
+    // LinkedIn: strip reactions, comments, and social proof sections before Readability
+    if (/linkedin\.com/.test(url)) {
+      const selectors = [
+        '.social-details-social-counts',
+        '.social-details-social-activity',
+        '[data-ad-preview="social-counts"]',
+        '.comments-comments-list',
+        '.comments-comment-item',
+        '.reactions-react-button',
+        '.feed-shared-social-action-bar',
+        '.feed-shared-social-counts',
+      ];
+      for (const sel of selectors) {
+        const els = Array.from(document.querySelectorAll(sel));
+        for (const el of els) el.remove();
+      }
+      // Remove any element whose only text is "Reactions", "Comments", or "Activity"
+      // and all following siblings (these are section dividers on LinkedIn)
+      const allEls = Array.from(document.querySelectorAll('*'));
+      const stopWords = ["reactions", "comments", "activity"];
+      for (const el of allEls) {
+        const text = (el.textContent || "").trim().toLowerCase();
+        if (stopWords.includes(text) && el.children.length <= 1) {
+          // Remove this element and all subsequent siblings
+          let node: ChildNode | null = el as unknown as ChildNode;
+          const parent = node.parentNode;
+          if (parent) {
+            while (node) {
+              const next: ChildNode | null = node.nextSibling;
+              parent.removeChild(node);
+              node = next;
+            }
+          }
+        }
+      }
+    }
+
     // Set documentURI for Readability (it uses this for relative URL resolution)
     Object.defineProperty(document, "documentURI", {
       value: url,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 
 type Highlight = {
   text: string;
@@ -9,6 +9,7 @@ type Highlight = {
   location: number | null;
   page: number | null;
   note: string | null;
+  addedOn: string | null;
 };
 
 type Book = {
@@ -16,6 +17,7 @@ type Book = {
   title: string;
   author: string;
   cover: string | null;
+  lastAccessed: string | null;
   highlights: Highlight[];
 };
 
@@ -56,6 +58,19 @@ async function loadFromServer(): Promise<KindleData | null> {
   }
 }
 
+function bookDate(book: Book): number | null {
+  if (book.lastAccessed) {
+    const t = new Date(book.lastAccessed).getTime();
+    if (!isNaN(t)) return t;
+  }
+  for (const h of book.highlights) {
+    if (!h.addedOn) continue;
+    const t = new Date(h.addedOn).getTime();
+    if (!isNaN(t)) return t;
+  }
+  return null;
+}
+
 export default function KindlePage() {
   const [data, setData] = useState<KindleData | null>(null);
   const [activeBook, setActiveBook] = useState<string | null>(null);
@@ -64,6 +79,7 @@ export default function KindlePage() {
   const [syncMessage, setSyncMessage] = useState("");
   const [extensionReady, setExtensionReady] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const autoSynced = useRef(false);
 
   // Load data: try localStorage first, then fetch from server
   useEffect(() => {
@@ -109,6 +125,12 @@ export default function KindlePage() {
       switch (event.data.type) {
         case "marks:pong-extension":
           setExtensionReady(true);
+          if (!autoSynced.current) {
+            autoSynced.current = true;
+            setSyncing(true);
+            setSyncMessage("Opening Amazon...");
+            window.postMessage({ type: "marks:kindle-start-sync" }, "*");
+          }
           break;
         case "marks:kindle-sync-progress":
           setSyncMessage(event.data.message);
@@ -134,6 +156,12 @@ export default function KindlePage() {
 
     if ((window as any).__marks_extension) {
       setExtensionReady(true);
+      if (!autoSynced.current) {
+        autoSynced.current = true;
+        setSyncing(true);
+        setSyncMessage("Opening Amazon...");
+        window.postMessage({ type: "marks:kindle-start-sync" }, "*");
+      }
     }
     window.postMessage({ type: "marks:ping-extension" }, "*");
 
@@ -151,7 +179,14 @@ export default function KindlePage() {
     if (!data) return [];
     return data.books
       .filter((b) => b.highlights && b.highlights.length > 0)
-      .sort((a, b) => b.highlights.length - a.highlights.length);
+      .sort((a, b) => {
+        const dateA = bookDate(a);
+        const dateB = bookDate(b);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateB - dateA;
+      });
   }, [data]);
 
   const filteredBooks = useMemo(() => {

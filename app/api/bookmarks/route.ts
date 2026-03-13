@@ -5,6 +5,7 @@ import { extractMetadata } from "@/lib/extract";
 import { detectBookmarkType } from "@/lib/detect-type";
 import { enrichTweet } from "@/lib/ai";
 import { createClient } from "@/lib/supabase-server";
+import { fetchTweetOembed } from "@/lib/twitter";
 
 function looksLikeUrl(title: string): boolean {
   return !title || /^https?:\/\//.test(title) || title === title.trim().replace(/\s/g, "");
@@ -36,9 +37,26 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     let title = body.title ?? "";
+    let description = body.description ?? "";
 
-    // If title is missing or looks like a URL, fetch the real title
-    if (looksLikeUrl(title)) {
+    const type = body.type ?? detectBookmarkType(body.url);
+
+    // For tweets, always use oembed unless title already has @handle: format
+    // (X.com is a client-rendered SPA — server-side fetch gets garbage)
+    if (type === "tweet") {
+      if (!title.match(/^@\w+:/)) {
+        try {
+          const oembed = await fetchTweetOembed(body.url);
+          if (oembed) {
+            title = `@${oembed.author}: ${oembed.text}`;
+            if (!description) description = oembed.text;
+          }
+        } catch {
+          // keep whatever title we have
+        }
+      }
+    } else if (looksLikeUrl(title)) {
+      // For non-tweets, fetch metadata if title is missing or looks like a URL
       try {
         const meta = await extractMetadata(body.url);
         if (meta.title) title = meta.title;
@@ -47,12 +65,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const type = body.type ?? detectBookmarkType(body.url);
-
     const bookmark = await createBookmark({
       url: body.url,
       title,
-      description: body.description ?? "",
+      description,
       tags: body.tags ?? [],
       is_read: body.is_read ?? false,
       user_id: user.id,

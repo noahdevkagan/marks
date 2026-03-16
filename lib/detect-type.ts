@@ -2,6 +2,7 @@ export type BookmarkType =
   | "article"
   | "tweet"
   | "video"
+  | "podcast"
   | "image"
   | "pdf"
   | "product";
@@ -18,6 +19,19 @@ export function detectBookmarkType(url: string): BookmarkType {
       pathname.includes("/status/")
     ) {
       return "tweet";
+    }
+
+    // Podcast
+    if (
+      [
+        "podcasts.apple.com",
+        "overcast.fm",
+        "pocketcasts.com",
+        "castro.fm",
+      ].includes(hostname) ||
+      (hostname === "open.spotify.com" && pathname.startsWith("/episode/"))
+    ) {
+      return "podcast";
     }
 
     // Video

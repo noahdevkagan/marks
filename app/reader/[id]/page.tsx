@@ -267,9 +267,9 @@ export default async function ReaderPage({ params }: Props) {
               </a>
             </div>
           );
-        })() : bookmark.type === "video" ? (
+        })() : bookmark.type === "video" || bookmark.type === "podcast" ? (
           <div className="reader-video">
-            {bookmark.url.includes("youtube.com") || bookmark.url.includes("youtu.be") ? (
+            {(bookmark.url.includes("youtube.com") || bookmark.url.includes("youtu.be")) && (
               <iframe
                 className="reader-video-embed"
                 src={`https://www.youtube.com/embed/${getYouTubeId(bookmark.url)}`}
@@ -277,18 +277,22 @@ export default async function ReaderPage({ params }: Props) {
                 allowFullScreen
                 title={bookmark.title}
               />
-            ) : (
+            )}
+            {bookmark.type === "podcast" && !(bookmark.url.includes("youtube.com") || bookmark.url.includes("youtu.be")) && (
               <p>
                 <a href={bookmark.url} target="_blank" rel="noopener noreferrer" className="reader-video-link">
-                  Watch video &rarr;
+                  Listen to episode &rarr;
                 </a>
               </p>
             )}
-            {archived && (
-              <div
-                className="reader-content"
-                dangerouslySetInnerHTML={{ __html: archived.content_html }}
-              />
+            <EnrichmentBlock bookmarkId={id} enrichment={enrichment} />
+            {archived?.content_text && (
+              <details className="transcript-details">
+                <summary>View full transcript</summary>
+                <div className="transcript-content">
+                  {archived.content_text}
+                </div>
+              </details>
             )}
           </div>
         ) : bookmark.type === "pdf" ? (
@@ -322,7 +326,9 @@ export default async function ReaderPage({ params }: Props) {
         )}
       </article>
 
-      <EnrichmentBlock bookmarkId={id} enrichment={enrichment} />
+      {bookmark.type !== "video" && bookmark.type !== "podcast" && (
+        <EnrichmentBlock bookmarkId={id} enrichment={enrichment} />
+      )}
 
       {bookmark.tags.length > 0 && (
         <div className="reader-tags">

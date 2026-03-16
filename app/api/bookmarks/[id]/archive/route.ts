@@ -10,7 +10,14 @@ import {
 import { createClient } from "@/lib/supabase-server";
 import { textToHtml } from "@/lib/pdf-html";
 import { uploadToStorage } from "@/lib/storage";
-import { enrichArticle, enrichTweet } from "@/lib/ai";
+import { enrichArticle, enrichTweet, enrichVideo } from "@/lib/ai";
+import {
+  extractYouTubeId,
+  fetchYouTubeTranscript,
+  fetchYouTubeMetadata,
+  findQuoteTimestamp,
+  formatTimestamp,
+} from "@/lib/youtube";
 import { fetchTweetOembed } from "@/lib/twitter";
 
 export const maxDuration = 60;
@@ -152,6 +159,137 @@ export async function POST(req: NextRequest, { params }: Params) {
         word_count: wordCount,
         excerpt: tweetText.slice(0, 200),
       });
+    }
+
+    // Video archiving: extract YouTube transcript + enrich
+    if (bookmark.type === "video") {
+      const videoId = extractYouTubeId(bookmark.url);
+      if (videoId) {
+        const [transcript, metadata] = await Promise.all([
+          fetchYouTubeTranscript(videoId),
+          fetchYouTubeMetadata(bookmark.url),
+        ]);
+
+        if (transcript) {
+          const supabase = await createClient();
+
+          // Store transcript as archived content
+          const wordCount = transcript.text.split(/\s+/).filter(Boolean).length;
+          await supabase.from("archived_content").upsert(
+            {
+              bookmark_id: id,
+              content_html: `<div class="transcript">${transcript.text}</div>`,
+              content_text: transcript.text,
+              excerpt: transcript.text.slice(0, 200),
+              byline: metadata?.author_name || null,
+              word_count: wordCount,
+              source: "youtube-transcript",
+            },
+            { onConflict: "bookmark_id" },
+          );
+
+          // Update type_metadata with video info
+          await updateBookmark(id, {
+            is_archived: true,
+            type_metadata: {
+              ...bookmark.type_metadata,
+              channel: metadata?.author_name,
+              thumbnail: metadata?.thumbnail_url,
+              has_transcript: true,
+            },
+          });
+
+          // Enrich with map-reduce
+          try {
+            const existingTags = await getAllTags();
+            const tagNames = existingTags.map((t) => t.name);
+            const enrichment = await enrichVideo(
+              transcript.text,
+              bookmark.title,
+              tagNames,
+            );
+
+            // Build enrichment items with type discriminators
+            const items: Record<string, unknown>[] = [];
+
+            // Hook
+            if (enrichment.hook) {
+              items.push({
+                type: "hook",
+                text: enrichment.hook,
+                completed: false,
+                created_at: new Date().toISOString(),
+              });
+            }
+
+            // Key insights
+            for (const insight of enrichment.key_insights) {
+              items.push({
+                type: "insight",
+                text: insight,
+                completed: false,
+                created_at: new Date().toISOString(),
+              });
+            }
+
+            // Notable quotes with timestamps
+            for (const quote of enrichment.quotes) {
+              const offsetSec = findQuoteTimestamp(
+                quote.text,
+                transcript.segments,
+              );
+              items.push({
+                type: "quote",
+                text: quote.text,
+                timestamp: offsetSec !== null ? formatTimestamp(offsetSec) : null,
+                timestamp_seconds: offsetSec,
+                video_id: videoId,
+                completed: false,
+                created_at: new Date().toISOString(),
+              });
+            }
+
+            // Action items
+            for (const action of enrichment.action_items) {
+              items.push({
+                type: "action",
+                text: action.text,
+                url: action.url || null,
+                completed: false,
+                created_at: new Date().toISOString(),
+              });
+            }
+
+            await supabase.from("bookmark_enrichments").upsert(
+              {
+                bookmark_id: id,
+                summary: enrichment.hook,
+                action_items: items,
+                ai_tags: enrichment.tags,
+                model: "claude-3-haiku-20240307",
+                processed_at: new Date().toISOString(),
+              },
+              { onConflict: "bookmark_id" },
+            );
+
+            const currentTags = bookmark.tags ?? [];
+            const mergedTags = [
+              ...new Set([...currentTags, ...enrichment.tags]),
+            ];
+            await setBookmarkTags(id, mergedTags);
+          } catch (enrichErr) {
+            console.error("Video enrichment error:", enrichErr);
+          }
+
+          return NextResponse.json({
+            ok: true,
+            source: "youtube-transcript",
+            word_count: wordCount,
+            excerpt: transcript.text.slice(0, 200),
+          });
+        }
+      }
+      // No transcript available — fall through to generic article extraction
     }
 
     // If pre-fetched HTML provided (e.g. from Chrome extension), parse it directly

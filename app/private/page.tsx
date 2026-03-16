@@ -13,6 +13,8 @@ type SiteStats = {
   bookmarks_this_week: number;
   bookmarks_this_month: number;
   bookmarks_by_type: Record<string, number>;
+  daily_bookmarks: { day: string; bookmarks: number; users: number }[];
+  new_users_by_day: { day: string; new_users: number }[];
 };
 
 function formatDuration(seconds: number): string {
@@ -107,6 +109,62 @@ export default function PrivatePage() {
               </span>
             </div>
           </div>
+
+          {stats.daily_bookmarks.length > 0 && (() => {
+            const maxDaily = Math.max(...stats.daily_bookmarks.map((d) => d.bookmarks), 1);
+            return (
+              <div className="stats-section">
+                <h2>Bookmarks per day (last 30 days)</h2>
+                <div className="stats-chart">
+                  {stats.daily_bookmarks.map((d) => (
+                    <div
+                      key={d.day}
+                      className="chart-bar-wrap"
+                      title={`${new Date(d.day).toLocaleDateString("en-US", { month: "short", day: "numeric" })}: ${d.bookmarks} bookmarks, ${d.users} active users`}
+                    >
+                      <div
+                        className="chart-bar"
+                        style={{
+                          height: `${Math.max((d.bookmarks / maxDaily) * 100, 2)}%`,
+                        }}
+                      />
+                      {new Date(d.day).getDay() === 1 && (
+                        <span className="chart-label">
+                          {new Date(d.day).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {stats.new_users_by_day.length > 0 && (
+            <div className="stats-section">
+              <h2>New users</h2>
+              <ul className="stats-top-days">
+                {stats.new_users_by_day.map((d) => (
+                  <li key={d.day}>
+                    <span className="top-day-date">
+                      {new Date(d.day).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <span className="top-day-stats">
+                      {d.new_users} new {d.new_users === 1 ? "user" : "users"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {Object.keys(stats.bookmarks_by_type).length > 0 && (
             <div className="stats-section">

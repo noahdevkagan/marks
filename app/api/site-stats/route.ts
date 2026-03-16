@@ -68,6 +68,47 @@ export async function GET() {
       .select("*", { count: "exact", head: true })
       .gte("created_at", monthAgo.toISOString());
 
+    // Daily bookmarks for the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const { data: recentBookmarks } = await supabase
+      .from("bookmarks")
+      .select("created_at, user_id")
+      .gte("created_at", thirtyDaysAgo.toISOString())
+      .order("created_at", { ascending: true });
+
+    const dailyMap = new Map<string, { bookmarks: number; users: Set<string> }>();
+    for (const row of recentBookmarks ?? []) {
+      const day = new Date(row.created_at).toISOString().slice(0, 10);
+      const entry = dailyMap.get(day) ?? { bookmarks: 0, users: new Set() };
+      entry.bookmarks++;
+      entry.users.add(row.user_id);
+      dailyMap.set(day, entry);
+    }
+    const daily_bookmarks = [...dailyMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, v]) => ({ day, bookmarks: v.bookmarks, users: v.users.size }));
+
+    // New users by day — based on each user's first bookmark
+    const { data: allBookmarks } = await supabase
+      .from("bookmarks")
+      .select("user_id, created_at")
+      .order("created_at", { ascending: true });
+
+    const firstSeen = new Map<string, string>();
+    for (const row of allBookmarks ?? []) {
+      if (!firstSeen.has(row.user_id)) {
+        firstSeen.set(row.user_id, new Date(row.created_at).toISOString().slice(0, 10));
+      }
+    }
+    const newUsersMap = new Map<string, number>();
+    for (const day of firstSeen.values()) {
+      newUsersMap.set(day, (newUsersMap.get(day) ?? 0) + 1);
+    }
+    const new_users_by_day = [...newUsersMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, count]) => ({ day, new_users: count }));
+
     return NextResponse.json({
       total_bookmarks: totalBookmarks ?? 0,
       total_users: uniqueUsers.size,
@@ -78,6 +119,8 @@ export async function GET() {
       bookmarks_this_week: bookmarksThisWeek ?? 0,
       bookmarks_this_month: bookmarksThisMonth ?? 0,
       bookmarks_by_type: typeCounts,
+      daily_bookmarks,
+      new_users_by_day,
     });
   } catch (err) {
     console.error("Site stats error:", err);

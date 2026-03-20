@@ -43,4 +43,14 @@ final class AuthViewModel: ObservableObject {
         try? await supabase.signOut()
         isSignedIn = false
     }
+
+    func deleteAccount() async {
+        error = nil
+        do {
+            try await supabase.deleteAccount()
+            isSignedIn = false
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
 }

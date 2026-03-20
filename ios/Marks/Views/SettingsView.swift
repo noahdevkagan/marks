@@ -8,6 +8,7 @@ struct SettingsView: View {
 
     @State private var isSyncing = false
     @State private var lastSync: Date?
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -19,6 +20,10 @@ struct SettingsView: View {
 
                     Button("Sign Out", role: .destructive) {
                         Task { await authVM.signOut() }
+                    }
+
+                    Button("Delete Account", role: .destructive) {
+                        showDeleteConfirmation = true
                     }
                 }
 
@@ -64,6 +69,14 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .onAppear {
                 lastSync = UserDefaults.standard.object(forKey: "lastSyncDate") as? Date
+            }
+            .alert("Delete Account", isPresented: $showDeleteConfirmation) {
+                Button("Delete", role: .destructive) {
+                    Task { await authVM.deleteAccount() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently delete your account and all your bookmarks. This action cannot be undone.")
             }
         }
     }

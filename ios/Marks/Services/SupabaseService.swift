@@ -153,6 +153,24 @@ final class SupabaseService {
         clearTokens()
     }
 
+    func deleteAccount() async throws {
+        // Call the web API route which uses the service role key to delete the user
+        let components = URLComponents(string: Config.webAppURL.absoluteString + "/api/auth/delete-account")!
+        var req = URLRequest(url: components.url!)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = accessToken {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let msg = String(data: data, encoding: .utf8) ?? "Failed to delete account"
+            throw SupabaseError.api(msg)
+        }
+        clearTokens()
+    }
+
     private func saveTokens(access: String, refresh: String) {
         accessToken = access
         refreshToken = refresh

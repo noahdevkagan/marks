@@ -16,7 +16,7 @@ skip_binary_upload(false)
 
 # App review info (demo account for reviewer)
 app_review_information(
-  demo_user: "reviewer@marks.app",
+  demo_user: "reviewer@getmarks.sh",
   demo_password: "ReviewMarks2026!"
 )
 

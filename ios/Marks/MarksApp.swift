@@ -28,13 +28,8 @@ struct MarksApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if UITestSeeder.isUITest || authVM.isSignedIn {
-                ContentView()
-                    .environmentObject(authVM)
-            } else {
-                LoginView()
-                    .environmentObject(authVM)
-            }
+            ContentView()
+                .environmentObject(authVM)
         }
         .modelContainer(sharedModelContainer)
     }

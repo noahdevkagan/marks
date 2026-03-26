@@ -9,21 +9,35 @@ struct SettingsView: View {
     @State private var isSyncing = false
     @State private var lastSync: Date?
     @State private var showDeleteConfirmation = false
+    @State private var showingLogin = false
 
     var body: some View {
         NavigationStack {
             List {
                 Section("Account") {
-                    if let email = UserDefaults.standard.string(forKey: "userEmail") {
-                        LabeledContent("Email", value: email)
-                    }
+                    if authVM.isSignedIn {
+                        if let email = UserDefaults.standard.string(forKey: "userEmail") {
+                            LabeledContent("Email", value: email)
+                        }
 
-                    Button("Sign Out", role: .destructive) {
-                        Task { await authVM.signOut() }
-                    }
+                        Button("Sign Out", role: .destructive) {
+                            Task { await authVM.signOut() }
+                        }
 
-                    Button("Delete Account", role: .destructive) {
-                        showDeleteConfirmation = true
+                        Button("Delete Account", role: .destructive) {
+                            showDeleteConfirmation = true
+                        }
+                    } else {
+                        Button {
+                            showingLogin = true
+                        } label: {
+                            HStack {
+                                Text("Sign in to sync your bookmarks")
+                                Spacer()
+                                Image(systemName: "arrow.right.circle")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
 
@@ -40,24 +54,26 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Sync") {
-                    Button {
-                        Task { await syncNow() }
-                    } label: {
-                        HStack {
-                            Text("Sync Now")
-                            Spacer()
-                            if isSyncing {
-                                ProgressView()
+                if authVM.isSignedIn {
+                    Section("Sync") {
+                        Button {
+                            Task { await syncNow() }
+                        } label: {
+                            HStack {
+                                Text("Sync Now")
+                                Spacer()
+                                if isSyncing {
+                                    ProgressView()
+                                }
                             }
                         }
-                    }
-                    .disabled(isSyncing)
+                        .disabled(isSyncing)
 
-                    if let lastSync {
-                        LabeledContent("Last Sync") {
-                            Text(lastSync, style: .relative)
-                                .foregroundStyle(.secondary)
+                        if let lastSync {
+                            LabeledContent("Last Sync") {
+                                Text(lastSync, style: .relative)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
@@ -69,6 +85,10 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .onAppear {
                 lastSync = UserDefaults.standard.object(forKey: "lastSyncDate") as? Date
+            }
+            .sheet(isPresented: $showingLogin) {
+                LoginView()
+                    .environmentObject(authVM)
             }
             .alert("Delete Account", isPresented: $showDeleteConfirmation) {
                 Button("Delete", role: .destructive) {

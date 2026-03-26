@@ -6,13 +6,19 @@ final class SyncEngine {
     private let supabase = SupabaseService.shared
 
     func sync(context: ModelContext) async throws {
-        // 1. Import bookmarks saved via the share extension
+        // 1. Import bookmarks saved via the share extension (always works, no auth needed)
         importShareExtensionQueue(context: context)
 
-        // 2. Push local pending changes
+        // 2. Only sync with server if signed in
+        guard await supabase.currentUser != nil else {
+            try context.save()
+            return
+        }
+
+        // 3. Push local pending changes
         try await pushPending(context: context)
 
-        // 3. Pull remote changes
+        // 4. Pull remote changes
         try await pullRemote(context: context)
 
         try context.save()

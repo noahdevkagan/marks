@@ -80,6 +80,7 @@ export default function KindlePage() {
   const [extensionReady, setExtensionReady] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const autoSynced = useRef(false);
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load data: try localStorage first, then fetch from server
   useEffect(() => {
@@ -124,6 +125,10 @@ export default function KindlePage() {
 
       switch (event.data.type) {
         case "marks:pong-extension":
+          if (pingIntervalRef.current) {
+            clearInterval(pingIntervalRef.current);
+            pingIntervalRef.current = null;
+          }
           setExtensionReady(true);
           if (!autoSynced.current) {
             autoSynced.current = true;
@@ -163,9 +168,20 @@ export default function KindlePage() {
         window.postMessage({ type: "marks:kindle-start-sync" }, "*");
       }
     }
-    window.postMessage({ type: "marks:ping-extension" }, "*");
 
-    return () => window.removeEventListener("message", onMessage);
+    // Retry pinging — content script may not have injected yet on first load
+    window.postMessage({ type: "marks:ping-extension" }, "*");
+    pingIntervalRef.current = setInterval(() => {
+      window.postMessage({ type: "marks:ping-extension" }, "*");
+    }, 500);
+
+    return () => {
+      window.removeEventListener("message", onMessage);
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+    };
   }, []);
 
   function startSync() {

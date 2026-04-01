@@ -309,6 +309,40 @@ final class SupabaseService {
         return row
     }
 
+    /// Web API response for bookmark creation (matches Next.js POST /api/bookmarks response).
+    struct WebAPIBookmarkResponse: Decodable {
+        let id: Int
+        let url: String
+        let title: String
+        let description: String?
+        let type: String?
+        let tags: [String]?
+    }
+
+    /// Create a bookmark via the web API endpoint, which extracts metadata (page title, etc.)
+    /// when the title is missing or looks like a URL.
+    func createBookmarkViaWebAPI(_ insert: BookmarkInsert) async throws -> WebAPIBookmarkResponse {
+        let apiURL = Config.webAppURL.appendingPathComponent("/api/bookmarks")
+        var req = URLRequest(url: apiURL)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Bearer \(accessToken ?? apiKey)", forHTTPHeaderField: "Authorization")
+
+        let body: [String: Any] = [
+            "url": insert.url,
+            "title": insert.title,
+            "description": insert.description,
+            "tags": insert.tags
+        ]
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw SupabaseError.api("Failed to create bookmark via web API")
+        }
+        return try decoder.decode(WebAPIBookmarkResponse.self, from: data)
+    }
+
     /// Resolve tag names to IDs (get-or-create) and insert into bookmark_tags junction table.
     private func setBookmarkTags(bookmarkID: Int, tags: [String]) async throws {
         for tagName in tags {

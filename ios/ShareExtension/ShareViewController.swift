@@ -54,7 +54,7 @@ class ShareViewController: UIViewController {
         // Save to shared UserDefaults for the main app to sync to Supabase
         let defaults = UserDefaults(suiteName: Config.appGroupID)
         var queue = defaults?.array(forKey: "pendingBookmarks") as? [[String: String]] ?? []
-        queue.append(["url": url, "title": title.isEmpty ? url : title])
+        queue.append(["url": url, "title": title])
         defaults?.set(queue, forKey: "pendingBookmarks")
         showSuccess()
     }

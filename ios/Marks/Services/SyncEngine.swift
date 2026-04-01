@@ -32,7 +32,7 @@ final class SyncEngine {
 
         for entry in queue {
             guard let url = entry["url"] else { continue }
-            let title = entry["title"] ?? url
+            let title = entry["title"] ?? ""
             let bookmark = Bookmark(
                 id: Int.random(in: 100_000...999_999),
                 url: url,
@@ -63,8 +63,10 @@ final class SyncEngine {
                     description: bookmark.desc,
                     tags: bookmark.tags
                 )
-                let row = try await supabase.createBookmark(insert)
-                bookmark.id = row.id
+                // Use web API which extracts page title when missing
+                let response = try await supabase.createBookmarkViaWebAPI(insert)
+                bookmark.id = response.id
+                bookmark.title = response.title
                 bookmark.syncStatus = .synced
 
             case .deleted:

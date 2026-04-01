@@ -388,6 +388,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     processArchiveCapture(msg, sender.tab?.id).then(sendResponse);
     return true;
   }
+  // Reader page asks us to open a URL, capture its HTML, and archive it
+  if (msg.type === "capture-page") {
+    captureFromUrl(msg.bookmarkId, msg.url, sender.tab?.id).then(sendResponse);
+    return true;
+  }
 });
 
 async function saveBookmark(data) {
@@ -458,6 +463,91 @@ async function captureAndArchive(bookmarkId, token, url) {
     });
   } catch (e) {
     console.log("[Marks] captureAndArchive error:", e);
+  }
+}
+
+// Called from reader page: open URL in new tab, capture rendered HTML, archive it
+async function captureFromUrl(bookmarkId, url, readerTabId) {
+  try {
+    const config = await getConfig();
+    let token = config.token;
+    if (!token) return { ok: false, error: "Not logged in" };
+
+    // Open the article in a new tab (background)
+    const tab = await chrome.tabs.create({ url, active: false });
+
+    // Wait for tab to finish loading (poll with timeout)
+    const loaded = await new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve(false);
+      }, 30000);
+
+      function listener(tabId, info) {
+        if (tabId === tab.id && info.status === "complete") {
+          chrome.tabs.onUpdated.removeListener(listener);
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      }
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+
+    if (!loaded) {
+      await chrome.tabs.remove(tab.id).catch(() => {});
+      notifyReaderTab(readerTabId, false, "Page took too long to load");
+      return { ok: false, error: "Timeout" };
+    }
+
+    // Small delay for JS-rendered content to settle
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Capture the rendered HTML
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => document.documentElement.outerHTML,
+    });
+
+    // Close the tab
+    await chrome.tabs.remove(tab.id).catch(() => {});
+
+    const html = results?.[0]?.result;
+    if (!html || html.length < 500) {
+      notifyReaderTab(readerTabId, false, "Page had no extractable content");
+      return { ok: false, error: "No content" };
+    }
+
+    // Send to archive endpoint
+    let res = await fetch(`${API_URL}/api/bookmarks/${bookmarkId}/archive`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ page_html: html }),
+    });
+
+    if (res.status === 401) {
+      token = await refreshToken(config);
+      if (token) {
+        res = await fetch(`${API_URL}/api/bookmarks/${bookmarkId}/archive`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ page_html: html }),
+        });
+      }
+    }
+
+    const ok = res.ok;
+    notifyReaderTab(readerTabId, ok, ok ? undefined : "Archive request failed");
+    return { ok };
+  } catch (e) {
+    console.error("[Marks] captureFromUrl error:", e);
+    notifyReaderTab(readerTabId, false, e.message);
+    return { ok: false, error: e.message };
   }
 }
 

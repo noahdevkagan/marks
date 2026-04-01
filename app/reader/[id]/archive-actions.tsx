@@ -58,6 +58,17 @@ export function ArchiveActions({
     setStatus("Waiting for archive capture…");
   }
 
+  function captureFromBrowser() {
+    // Tell extension to open the URL in a background tab, capture rendered HTML, and archive it
+    window.postMessage({
+      type: "marks:capture-page",
+      bookmarkId,
+      url: bookmarkUrl,
+    });
+    setLoading(true);
+    setStatus("Capturing page…");
+  }
+
   async function archive() {
     setLoading(true);
     setError("");
@@ -92,10 +103,22 @@ export function ArchiveActions({
     return <span className="archive-status">{status}</span>;
   }
 
+  const hasExtension = typeof window !== "undefined" && window.__marks_extension;
+
   return (
     <>
       {error && <span className="archive-error">{error}</span>}
-      {isArchived && source === "readability" && (
+      {!isArchived && hasExtension && (
+        <button className="reader-action-btn" onClick={captureFromBrowser}>
+          capture page
+        </button>
+      )}
+      {!isArchived && (
+        <button className="reader-action-btn" onClick={archive}>
+          retry
+        </button>
+      )}
+      {(isArchived ? source === "readability" : true) && (
         <a
           className="reader-action-btn"
           href={`https://archive.today/newest/${encodeURIComponent(bookmarkUrl)}`}

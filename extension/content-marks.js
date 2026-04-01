@@ -25,6 +25,20 @@ window.addEventListener("message", async (event) => {
     return;
   }
 
+  // React asks us to open a URL and capture its HTML for archiving
+  if (event.data?.type === "marks:capture-page") {
+    try {
+      await chrome.runtime.sendMessage({
+        type: "capture-page",
+        bookmarkId: event.data.bookmarkId,
+        url: event.data.url,
+      });
+    } catch (e) {
+      console.error("[Marks] capture-page failed:", e);
+    }
+    return;
+  }
+
   // Highlights page asks to start Kindle sync
   if (event.data?.type === "marks:kindle-start-sync") {
     chrome.runtime.sendMessage({ type: "kindle-start-sync" });

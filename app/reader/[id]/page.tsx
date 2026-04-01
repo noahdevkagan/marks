@@ -316,11 +316,15 @@ export default async function ReaderPage({ params }: Props) {
           <div className="reader-empty">
             <p>We couldn&rsquo;t extract this article.</p>
             <p>
-              Try viewing the{" "}
+              Use <strong>capture page</strong> above to grab it via the extension,
+              or try <strong>web archive</strong> for a cached version.
+            </p>
+            <p>
+              You can also view the{" "}
               <a href={bookmark.url} target="_blank" rel="noopener noreferrer">
                 original page
               </a>
-              {" "}instead.
+              .
             </p>
           </div>
         )}

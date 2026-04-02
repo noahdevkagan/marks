@@ -224,9 +224,21 @@ export default async function ReaderPage({ params }: Props) {
         </header>
 
         {bookmark.type === "tweet" ? (() => {
-          let contentHtml = bookmark.type_metadata?.content_html
-            ? String(bookmark.type_metadata.content_html)
-            : "";
+          // Prefer archived content (clean blockquote) over raw type_metadata
+          // which can contain engagement metrics (reply/retweet/like counts)
+          let contentHtml = archived?.content_html
+            ? String(archived.content_html)
+            : bookmark.type_metadata?.content_html
+              ? String(bookmark.type_metadata.content_html)
+              : "";
+          // Strip tweet engagement metrics (reply/retweet/like/view counts)
+          // These appear as short elements containing just numbers like "3", "26", "2.6K"
+          if (contentHtml && !archived?.content_html) {
+            contentHtml = contentHtml
+              .replace(/<(p|div|span|h[1-6])[^>]*>\s*[\d,.]+[KkMm]?\s*<\/\1>/g, "")
+              .replace(/<(p|div|span|h[1-6])[^>]*>\s*<\/\1>/g, "")
+              .trim();
+          }
           // Improve readability: split <p> blocks containing <br> into separate paragraphs
           if (contentHtml) {
             contentHtml = contentHtml.replace(

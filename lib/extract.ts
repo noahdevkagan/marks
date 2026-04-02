@@ -8,7 +8,6 @@ export type ExtractedArticle = {
   excerpt: string;
   byline: string;
   word_count: number;
-  title?: string;
   source: "readability" | "archive.ph" | "wayback";
 };
 

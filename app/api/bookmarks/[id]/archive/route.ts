@@ -353,8 +353,12 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Mark bookmark as archived
-    await updateBookmark(id, { is_archived: true });
+    // Mark bookmark as archived + backfill title if missing
+    const needsTitle = !bookmark.title || /^https?:\/\//.test(bookmark.title);
+    await updateBookmark(id, {
+      is_archived: true,
+      ...(needsTitle && article.title ? { title: article.title } : {}),
+    });
 
     // Upload HTML archive to Supabase Storage as durable backup
     try {

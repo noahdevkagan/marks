@@ -88,6 +88,14 @@ export function ArchiveActions({
         return;
       }
 
+      // Server-side extraction failed — auto-try browser capture via extension
+      const hasExt = typeof window !== "undefined" && window.__marks_extension;
+      if (hasExt) {
+        setStatus("Trying browser capture…");
+        captureFromBrowser();
+        return;
+      }
+
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Failed to extract");
       setStatus("");

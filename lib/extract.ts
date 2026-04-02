@@ -2,6 +2,7 @@ import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
 
 export type ExtractedArticle = {
+  title: string;
   content_html: string;
   content_text: string;
   excerpt: string;
@@ -195,6 +196,7 @@ function parseWithReadability(
     const textContent = stripHtml(article.content);
 
     return {
+      title: article.title ?? "",
       content_html: article.content,
       content_text: textContent,
       excerpt: article.excerpt ?? textContent.slice(0, 280),

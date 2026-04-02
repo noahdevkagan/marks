@@ -220,7 +220,7 @@ export async function extractMetadata(url: string): Promise<PageMetadata> {
       signal: AbortSignal.timeout(10000),
     });
 
-    if (!res.ok) return { title: "", description: "", keywords: "" };
+    if (!res.ok) return { title: titleFromSlug(url), description: "", keywords: "" };
 
     const html = await res.text();
     const { document: doc } = parseHTML(html);
@@ -237,7 +237,26 @@ export async function extractMetadata(url: string): Promise<PageMetadata> {
 
     return { title, description, keywords };
   } catch {
-    return { title: "", description: "", keywords: "" };
+    return { title: titleFromSlug(url), description: "", keywords: "" };
+  }
+}
+
+/** Derive a human-readable title from a URL slug as a last resort */
+function titleFromSlug(url: string): string {
+  try {
+    const { pathname } = new URL(url);
+    // Find the longest slug-like segment (contains hyphens, likely an article title)
+    const segments = pathname.split("/").filter((s) => s.length > 0);
+    const slug = segments
+      .filter((s) => s.includes("-") && !/^\d{4}[-/]\d{2}/.test(s))
+      .sort((a, b) => b.length - a.length)[0];
+    if (!slug || slug.length < 10) return "";
+    return slug
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+      .trim();
+  } catch {
+    return "";
   }
 }
 

@@ -473,10 +473,49 @@ async function captureFromUrl(bookmarkId, url, readerTabId) {
     let token = config.token;
     if (!token) return { ok: false, error: "Not logged in" };
 
-    // Open the article in a new tab (background)
+    // Try direct page capture first, then fall back to archive.ph
+    const result = await captureTabHtml(url);
+
+    if (result) {
+      const archiveResult = await sendToArchive(bookmarkId, token, result, config);
+      if (archiveResult.ok) {
+        notifyReaderTab(readerTabId, true);
+        return { ok: true };
+      }
+    }
+
+    // Direct capture failed or produced no usable content — try archive.ph
+    console.log("[Marks] Direct capture failed, trying archive.ph…");
+    const archivePhUrl = `https://archive.ph/newest/${encodeURI(url)}`;
+    const archiveHtml = await captureTabHtml(archivePhUrl);
+
+    if (archiveHtml) {
+      // Strip archive.ph toolbar/chrome before sending
+      const cleaned = archiveHtml
+        .replace(/<div id="HEADER"[\s\S]*?<\/div>\s*<!-- \/HEADER -->/i, "")
+        .replace(/<script[\s\S]*?<\/script>/gi, "");
+
+      const archiveResult = await sendToArchive(bookmarkId, token, cleaned, config);
+      if (archiveResult.ok) {
+        notifyReaderTab(readerTabId, true);
+        return { ok: true };
+      }
+    }
+
+    notifyReaderTab(readerTabId, false, "Could not extract from page or archive");
+    return { ok: false, error: "All capture methods failed" };
+  } catch (e) {
+    console.error("[Marks] captureFromUrl error:", e);
+    notifyReaderTab(readerTabId, false, e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
+// Open a URL in a background tab, wait for load, capture HTML, close tab
+async function captureTabHtml(url) {
+  try {
     const tab = await chrome.tabs.create({ url, active: false });
 
-    // Wait for tab to finish loading (poll with timeout)
     const loaded = await new Promise((resolve) => {
       const timeout = setTimeout(() => {
         chrome.tabs.onUpdated.removeListener(listener);
@@ -495,60 +534,55 @@ async function captureFromUrl(bookmarkId, url, readerTabId) {
 
     if (!loaded) {
       await chrome.tabs.remove(tab.id).catch(() => {});
-      notifyReaderTab(readerTabId, false, "Page took too long to load");
-      return { ok: false, error: "Timeout" };
+      return null;
     }
 
     // Small delay for JS-rendered content to settle
     await new Promise((r) => setTimeout(r, 2000));
 
-    // Capture the rendered HTML
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => document.documentElement.outerHTML,
     });
 
-    // Close the tab
     await chrome.tabs.remove(tab.id).catch(() => {});
 
     const html = results?.[0]?.result;
-    if (!html || html.length < 500) {
-      notifyReaderTab(readerTabId, false, "Page had no extractable content");
-      return { ok: false, error: "No content" };
-    }
+    if (!html || html.length < 500) return null;
 
-    // Send to archive endpoint
-    let res = await fetch(`${API_URL}/api/bookmarks/${bookmarkId}/archive`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ page_html: html }),
-    });
-
-    if (res.status === 401) {
-      token = await refreshToken(config);
-      if (token) {
-        res = await fetch(`${API_URL}/api/bookmarks/${bookmarkId}/archive`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ page_html: html }),
-        });
-      }
-    }
-
-    const ok = res.ok;
-    notifyReaderTab(readerTabId, ok, ok ? undefined : "Archive request failed");
-    return { ok };
+    return html;
   } catch (e) {
-    console.error("[Marks] captureFromUrl error:", e);
-    notifyReaderTab(readerTabId, false, e.message);
-    return { ok: false, error: e.message };
+    console.error("[Marks] captureTabHtml error:", e);
+    return null;
   }
+}
+
+// Send captured HTML to the archive endpoint, handle 401 retry
+async function sendToArchive(bookmarkId, token, html, config) {
+  let res = await fetch(`${API_URL}/api/bookmarks/${bookmarkId}/archive`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ page_html: html }),
+  });
+
+  if (res.status === 401) {
+    token = await refreshToken(config);
+    if (token) {
+      res = await fetch(`${API_URL}/api/bookmarks/${bookmarkId}/archive`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ page_html: html }),
+      });
+    }
+  }
+
+  return { ok: res.ok, status: res.status };
 }
 
 // Called when content-archive.js on archive.today captures page HTML

@@ -202,7 +202,6 @@ function parseWithReadability(
       excerpt: article.excerpt ?? textContent.slice(0, 280),
       byline: article.byline ?? "",
       word_count: textContent.split(/\s+/).filter(Boolean).length,
-      title: article.title || undefined,
     };
   } catch {
     return null;

@@ -76,72 +76,75 @@ export async function POST(req: NextRequest) {
       type_metadata: body.type_metadata ?? {},
     });
 
-    // Auto-archive: trigger archive endpoint as a separate serverless invocation
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL || "https://marks-drab.vercel.app";
-    const authHeader = req.headers.get("authorization") || "";
-    fetch(`${appUrl}/api/bookmarks/${bookmark.id}/archive`, {
-      method: "POST",
-      headers: {
-        Authorization: authHeader,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ force_archive: false }),
-    }).catch(() => {});
+    // Skip archive + enrichment for bulk sync imports
+    if (!body.skip_enrichment) {
+      // Auto-archive: trigger archive endpoint as a separate serverless invocation
+      const appUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "https://marks-drab.vercel.app";
+      const authHeader = req.headers.get("authorization") || "";
+      fetch(`${appUrl}/api/bookmarks/${bookmark.id}/archive`, {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ force_archive: false }),
+      }).catch(() => {});
 
-    // Auto-suggest tags if none provided
-    if (!body.tags || body.tags.length === 0) {
-      try {
-        const { suggestTags } = await import("@/lib/suggest-tags");
-        const existingTags = await getAllTags();
-        const tagNames = existingTags.map((t) => t.name);
-        const suggested = await suggestTags(body.url, tagNames);
-        if (suggested.length > 0) {
-          await setBookmarkTags(bookmark.id, suggested);
-        }
-      } catch {
-        // tag suggestion failed, not critical
-      }
-    }
-
-    // Enrich tweets directly (archive route can't extract article from tweets)
-    if (type === "tweet") {
-      try {
-        const tweetText = body.description || title || "";
-        if (tweetText.trim()) {
-          const handleMatch = title.match(/^@(\w+):/);
-          const handle = handleMatch?.[1] || "";
+      // Auto-suggest tags if none provided
+      if (!body.tags || body.tags.length === 0) {
+        try {
+          const { suggestTags } = await import("@/lib/suggest-tags");
           const existingTags = await getAllTags();
           const tagNames = existingTags.map((t) => t.name);
-          const enrichment = await enrichTweet(tweetText, handle, tagNames);
-
-          const supabase = await createClient();
-          await supabase.from("bookmark_enrichments").upsert(
-            {
-              bookmark_id: bookmark.id,
-              summary: enrichment.summary,
-              action_items: enrichment.action_items.map((a) => ({
-                text: a.text,
-                url: a.url || null,
-                completed: false,
-                created_at: new Date().toISOString(),
-              })),
-              ai_tags: enrichment.tags,
-              model: "claude-3-haiku-20240307",
-              processed_at: new Date().toISOString(),
-            },
-            { onConflict: "bookmark_id" },
-          );
-
-          // Merge AI tags
-          const currentTags = bookmark.tags ?? [];
-          const mergedTags = [
-            ...new Set([...currentTags, ...enrichment.tags]),
-          ];
-          await setBookmarkTags(bookmark.id, mergedTags);
+          const suggested = await suggestTags(body.url, tagNames);
+          if (suggested.length > 0) {
+            await setBookmarkTags(bookmark.id, suggested);
+          }
+        } catch {
+          // tag suggestion failed, not critical
         }
-      } catch (err) {
-        console.error("Tweet enrichment error:", err);
+      }
+
+      // Enrich tweets directly (archive route can't extract article from tweets)
+      if (type === "tweet") {
+        try {
+          const tweetText = body.description || title || "";
+          if (tweetText.trim()) {
+            const handleMatch = title.match(/^@(\w+):/);
+            const handle = handleMatch?.[1] || "";
+            const existingTags = await getAllTags();
+            const tagNames = existingTags.map((t) => t.name);
+            const enrichment = await enrichTweet(tweetText, handle, tagNames);
+
+            const supabase = await createClient();
+            await supabase.from("bookmark_enrichments").upsert(
+              {
+                bookmark_id: bookmark.id,
+                summary: enrichment.summary,
+                action_items: enrichment.action_items.map((a) => ({
+                  text: a.text,
+                  url: a.url || null,
+                  completed: false,
+                  created_at: new Date().toISOString(),
+                })),
+                ai_tags: enrichment.tags,
+                model: "claude-3-haiku-20240307",
+                processed_at: new Date().toISOString(),
+              },
+              { onConflict: "bookmark_id" },
+            );
+
+            // Merge AI tags
+            const currentTags = bookmark.tags ?? [];
+            const mergedTags = [
+              ...new Set([...currentTags, ...enrichment.tags]),
+            ];
+            await setBookmarkTags(bookmark.id, mergedTags);
+          }
+        } catch (err) {
+          console.error("Tweet enrichment error:", err);
+        }
       }
     }
 

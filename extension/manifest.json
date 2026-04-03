@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Marks - Bookmarks, AI Reader, Pocket Alt",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Save bookmarks to Marks with auto-suggested tags. Sync Kindle highlights.",
   "permissions": [
     "activeTab",

@@ -81,6 +81,24 @@ export async function getBookmark(
   return withTags;
 }
 
+export async function getBookmarkByUrl(
+  url: string,
+  userId: string,
+): Promise<BookmarkWithTags | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("bookmarks")
+    .select("*")
+    .eq("url", url)
+    .eq("user_id", userId)
+    .single();
+
+  if (!data) return null;
+
+  const [withTags] = await attachTags([data]);
+  return withTags;
+}
+
 export async function createBookmark(input: {
   url: string;
   title: string;

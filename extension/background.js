@@ -366,6 +366,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch(() => sendResponse({ tags: [] }));
     return true;
   }
+  if (msg.type === "check-existing") {
+    checkExistingBookmark(msg.url)
+      .then(sendResponse)
+      .catch(() => sendResponse({ exists: false }));
+    return true;
+  }
   if (msg.type === "get-config") {
     getConfig()
       .then(sendResponse)
@@ -652,6 +658,32 @@ async function processArchiveCapture(msg, archiveTabId) {
 function notifyReaderTab(tabId, ok, error) {
   if (!tabId) return;
   chrome.tabs.sendMessage(tabId, { type: "archive-done", ok, error }).catch(() => {});
+}
+
+async function checkExistingBookmark(url) {
+  const config = await getConfig();
+  if (!config.token) return { exists: false };
+
+  try {
+    let token = config.token;
+    const params = new URLSearchParams({ url });
+    let res = await fetch(`${API_URL}/api/bookmarks/check?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.status === 401) {
+      token = await refreshToken(config);
+      if (!token) return { exists: false };
+      res = await fetch(`${API_URL}/api/bookmarks/check?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+
+    if (!res.ok) return { exists: false };
+    return await res.json();
+  } catch {
+    return { exists: false };
+  }
 }
 
 async function fetchSuggestedTags(url, title) {

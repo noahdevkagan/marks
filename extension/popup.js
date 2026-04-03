@@ -332,6 +332,24 @@ async function showSaveView() {
     }
   }
 
+  // Check if this URL was already saved — pre-fill existing tags
+  if (tab?.url && config.token) {
+    try {
+      const existing = await chrome.runtime.sendMessage({
+        type: "check-existing",
+        url: tab.url,
+      });
+      if (existing?.exists) {
+        document.getElementById("save-btn").textContent = "Update";
+        if (existing.tags?.length > 0) {
+          for (const t of existing.tags) {
+            addTag(t);
+          }
+        }
+      }
+    } catch {}
+  }
+
   // Fetch suggested tags (pass title for better AI context on SPAs like x.com)
   if (tab?.url && config.token) {
     const titleVal = document.getElementById("title").value || "";

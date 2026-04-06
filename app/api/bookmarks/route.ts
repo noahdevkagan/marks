@@ -5,7 +5,7 @@ import { extractMetadata } from "@/lib/extract";
 import { detectBookmarkType } from "@/lib/detect-type";
 import { enrichTweet } from "@/lib/ai";
 import { createClient } from "@/lib/supabase-server";
-import { fetchTweetOembed } from "@/lib/twitter";
+import { fetchTweetOembed, resolveTweetLinkTitle } from "@/lib/twitter";
 
 function looksLikeUrl(title: string): boolean {
   return !title || /^https?:\/\//.test(title) || title === title.trim().replace(/\s/g, "");
@@ -48,7 +48,11 @@ export async function POST(req: NextRequest) {
         try {
           const oembed = await fetchTweetOembed(body.url);
           if (oembed) {
-            title = `@${oembed.author}: ${oembed.text}`;
+            // If tweet text is just a link, use the linked article's title instead
+            const linkedTitle = await resolveTweetLinkTitle(oembed.text, body.url);
+            title = linkedTitle
+              ? linkedTitle
+              : `@${oembed.author}: ${oembed.text}`;
             if (!description) description = oembed.text;
           }
         } catch {

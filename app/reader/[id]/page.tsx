@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBookmark, updateBookmark } from "@/lib/db";
 import { extractMetadata } from "@/lib/extract";
+import { resolveTweetLinkTitle } from "@/lib/twitter";
 import { createClient } from "@/lib/supabase-server";
 import { AnalyzeButton } from "./analyze-button";
 import { ArchiveActions } from "./archive-actions";
@@ -142,8 +143,25 @@ export default async function ReaderPage({ params }: Props) {
 
   // Fix missing title: if title is empty or just a URL, try to extract it
   const titleIsUrl = !bookmark.title || /^https?:\/\//.test(bookmark.title);
+  // For tweets, also detect "@handle: https://..." pattern (tweet text was just a link)
+  const tweetTitleIsUrl = bookmark.type === "tweet" &&
+    bookmark.title && /^@\w+:\s*https?:\/\//.test(bookmark.title);
   let displayTitle = bookmark.title || bookmark.url;
-  if (titleIsUrl) {
+  if (tweetTitleIsUrl) {
+    // Extract the URL from the title and resolve the linked article's title
+    const urlMatch = bookmark.title.match(/https?:\/\/\S+/);
+    if (urlMatch) {
+      try {
+        const linkedTitle = await resolveTweetLinkTitle(urlMatch[0], bookmark.url);
+        if (linkedTitle) {
+          displayTitle = linkedTitle;
+          updateBookmark(id, { title: linkedTitle }).catch(() => {});
+        }
+      } catch {
+        // keep existing title
+      }
+    }
+  } else if (titleIsUrl) {
     try {
       const meta = await extractMetadata(bookmark.url);
       if (meta.title) {

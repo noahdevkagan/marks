@@ -101,8 +101,9 @@ struct AddBookmarkView: View {
             isFetchingMetadata = true
             defer { isFetchingMetadata = false }
 
-            guard let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-                  let endpoint = URL(string: Config.webAppURL.absoluteString + "/api/metadata?url=\(encoded)") else { return }
+            var components = URLComponents(string: Config.webAppURL.absoluteString + "/api/metadata")!
+            components.queryItems = [URLQueryItem(name: "url", value: trimmed)]
+            guard let endpoint = components.url else { return }
 
             var req = URLRequest(url: endpoint)
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")

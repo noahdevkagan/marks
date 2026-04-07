@@ -11,6 +11,7 @@ struct AddBookmarkView: View {
     @State private var isSaving = false
     @State private var isFetchingMetadata = false
     @State private var fetchTask: Task<Void, Never>?
+    @State private var lastFetchedURL = ""
 
     var body: some View {
         NavigationStack {
@@ -91,9 +92,11 @@ struct AddBookmarkView: View {
     }
 
     private func fetchMetadata(for rawURL: String) {
-        fetchTask?.cancel()
         let trimmed = rawURL.trimmingCharacters(in: .whitespaces)
-        guard trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") else { return }
+        guard trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://"),
+              trimmed != lastFetchedURL else { return }
+
+        fetchTask?.cancel()
 
         fetchTask = Task {
             // Debounce — wait for user to finish typing/pasting
@@ -103,6 +106,8 @@ struct AddBookmarkView: View {
             isFetchingMetadata = true
             defer { isFetchingMetadata = false }
 
+            lastFetchedURL = trimmed
+
             guard let meta = try? await SupabaseService.shared.fetchMetadata(url: trimmed),
                   !Task.isCancelled else { return }
 
@@ -110,7 +115,7 @@ struct AddBookmarkView: View {
             if title.trimmingCharacters(in: .whitespaces).isEmpty, let t = meta.title, !t.isEmpty {
                 title = t
             }
-            // Only add suggested tags if user hasn't added any yet
+            // Only set suggested tags once (don't overwrite user edits)
             if tags.isEmpty, let suggested = meta.suggestedTags, !suggested.isEmpty {
                 tags = suggested
             }

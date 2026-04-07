@@ -37,11 +37,11 @@ struct AddBookmarkView: View {
 
                 Section("Tags") {
                     FlowLayout(spacing: 6) {
-                        ForEach(tags, id: \.self) { tag in
+                        ForEach(Array(tags.enumerated()), id: \.offset) { index, tag in
                             HStack(spacing: 4) {
                                 Text(tag)
                                 Button {
-                                    tags.removeAll { $0 == tag }
+                                    tags.remove(at: index)
                                 } label: {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.caption)

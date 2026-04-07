@@ -101,47 +101,8 @@ struct AddBookmarkView: View {
             isFetchingMetadata = true
             defer { isFetchingMetadata = false }
 
-            var components = URLComponents(string: Config.webAppURL.absoluteString + "/api/metadata")!
-            components.queryItems = [URLQueryItem(name: "url", value: trimmed)]
-            guard let endpoint = components.url else { return }
-
-            var req = URLRequest(url: endpoint)
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            if let token = UserDefaults.standard.string(forKey: "supabase_access_token") {
-                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            }
-
-            print("[Metadata] Fetching: \(endpoint)")
-
-            let data: Data
-            let response: URLResponse
-            do {
-                (data, response) = try await URLSession.shared.data(for: req)
-            } catch {
-                print("[Metadata] Network error: \(error)")
-                return
-            }
-
-            guard let http = response as? HTTPURLResponse else { return }
-            print("[Metadata] Status: \(http.statusCode)")
-
-            guard (200..<300).contains(http.statusCode), !Task.isCancelled else {
-                if let body = String(data: data, encoding: .utf8) {
-                    print("[Metadata] Error body: \(body)")
-                }
-                return
-            }
-
-            struct MetadataResponse: Decodable {
-                let title: String?
-                let suggestedTags: [String]?
-            }
-
-            guard let meta = try? JSONDecoder().decode(MetadataResponse.self, from: data) else {
-                print("[Metadata] Failed to decode response")
-                return
-            }
-            print("[Metadata] Title: \(meta.title ?? "nil"), Tags: \(meta.suggestedTags ?? [])")
+            guard let meta = try? await SupabaseService.shared.fetchMetadata(url: trimmed),
+                  !Task.isCancelled else { return }
 
             // Only fill in title if user hasn't typed one
             if title.trimmingCharacters(in: .whitespaces).isEmpty, let t = meta.title, !t.isEmpty {

@@ -388,6 +388,38 @@ final class SupabaseService {
         _ = try await request("/rest/v1/bookmarks", method: "DELETE", query: ["id": "eq.\(id)"])
     }
 
+    /// Fetch page metadata (title, suggested tags) for a URL via the web API.
+    struct MetadataResponse: Decodable {
+        let title: String?
+        let description: String?
+        let suggestedTags: [String]?
+    }
+
+    func fetchMetadata(url: String) async throws -> MetadataResponse {
+        var components = URLComponents(string: Config.webAppURL.absoluteString + "/api/metadata")!
+        components.queryItems = [URLQueryItem(name: "url", value: url)]
+        guard let endpoint = components.url else { throw SupabaseError.api("Invalid URL") }
+
+        var req = URLRequest(url: endpoint)
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Bearer \(accessToken ?? apiKey)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: req)
+
+        // On 401, try refreshing token and retry
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            if try await refreshSession() {
+                return try await fetchMetadata(url: url)
+            }
+            throw SupabaseError.unauthorized
+        }
+
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw SupabaseError.api("Failed to fetch metadata")
+        }
+        return try decoder.decode(MetadataResponse.self, from: data)
+    }
+
     /// Fetch archived content for a single bookmark from the server.
     func fetchArchivedContent(bookmarkID: Int) async throws -> ArchivedContentRow? {
         let data = try await request("/rest/v1/archived_content", query: [

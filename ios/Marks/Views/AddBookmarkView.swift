@@ -111,16 +111,37 @@ struct AddBookmarkView: View {
                 req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             }
 
-            guard let (data, response) = try? await URLSession.shared.data(for: req),
-                  let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
-                  !Task.isCancelled else { return }
+            print("[Metadata] Fetching: \(endpoint)")
+
+            let data: Data
+            let response: URLResponse
+            do {
+                (data, response) = try await URLSession.shared.data(for: req)
+            } catch {
+                print("[Metadata] Network error: \(error)")
+                return
+            }
+
+            guard let http = response as? HTTPURLResponse else { return }
+            print("[Metadata] Status: \(http.statusCode)")
+
+            guard (200..<300).contains(http.statusCode), !Task.isCancelled else {
+                if let body = String(data: data, encoding: .utf8) {
+                    print("[Metadata] Error body: \(body)")
+                }
+                return
+            }
 
             struct MetadataResponse: Decodable {
                 let title: String?
                 let suggestedTags: [String]?
             }
 
-            guard let meta = try? JSONDecoder().decode(MetadataResponse.self, from: data) else { return }
+            guard let meta = try? JSONDecoder().decode(MetadataResponse.self, from: data) else {
+                print("[Metadata] Failed to decode response")
+                return
+            }
+            print("[Metadata] Title: \(meta.title ?? "nil"), Tags: \(meta.suggestedTags ?? [])")
 
             // Only fill in title if user hasn't typed one
             if title.trimmingCharacters(in: .whitespaces).isEmpty, let t = meta.title, !t.isEmpty {

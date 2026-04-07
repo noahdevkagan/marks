@@ -9,6 +9,8 @@ struct AddBookmarkView: View {
     @State private var tagInput = ""
     @State private var tags: [String] = []
     @State private var isSaving = false
+    @State private var isFetchingMetadata = false
+    @State private var fetchTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -18,10 +20,19 @@ struct AddBookmarkView: View {
                         .textContentType(.URL)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
+                        .onChange(of: url) { _, newValue in
+                            fetchMetadata(for: newValue)
+                        }
                 }
 
                 Section("Title (optional)") {
-                    TextField("Page title", text: $title)
+                    HStack {
+                        TextField("Page title", text: $title)
+                        if isFetchingMetadata {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                    }
                 }
 
                 Section("Tags") {
@@ -75,6 +86,50 @@ struct AddBookmarkView: View {
             tags.append(t)
         }
         tagInput = ""
+    }
+
+    private func fetchMetadata(for rawURL: String) {
+        fetchTask?.cancel()
+        let trimmed = rawURL.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") else { return }
+
+        fetchTask = Task {
+            // Debounce — wait for user to finish typing/pasting
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+
+            isFetchingMetadata = true
+            defer { isFetchingMetadata = false }
+
+            guard let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+                  let endpoint = URL(string: Config.webAppURL.absoluteString + "/api/metadata?url=\(encoded)") else { return }
+
+            var req = URLRequest(url: endpoint)
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            if let token = UserDefaults.standard.string(forKey: "supabase_access_token") {
+                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+
+            guard let (data, response) = try? await URLSession.shared.data(for: req),
+                  let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  !Task.isCancelled else { return }
+
+            struct MetadataResponse: Decodable {
+                let title: String?
+                let suggestedTags: [String]?
+            }
+
+            guard let meta = try? JSONDecoder().decode(MetadataResponse.self, from: data) else { return }
+
+            // Only fill in title if user hasn't typed one
+            if title.trimmingCharacters(in: .whitespaces).isEmpty, let t = meta.title, !t.isEmpty {
+                title = t
+            }
+            // Only add suggested tags if user hasn't added any yet
+            if tags.isEmpty, let suggested = meta.suggestedTags, !suggested.isEmpty {
+                tags = suggested
+            }
+        }
     }
 
     private func save() async {

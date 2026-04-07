@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { getAllTags } from "@/lib/db";
 import { extractMetadata } from "@/lib/extract";
+import { suggestTags } from "@/lib/suggest-tags";
 import { fetchTweetOembed, isTweetUrl } from "@/lib/twitter";
 
 export async function GET(req: NextRequest) {
@@ -17,45 +18,29 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    let title = "";
+    let description = "";
+
     // Twitter/X is a client-rendered SPA — server fetch gets no useful metadata.
     // Use oembed instead.
     if (isTweetUrl(url)) {
       const oembed = await fetchTweetOembed(url);
       if (oembed) {
-        const title = `@${oembed.author}: ${oembed.text}`;
-        const description = oembed.text;
-        const corpus = [title, description, url].join(" ").toLowerCase();
-        const allTags = await getAllTags();
-        const suggestedTags = allTags
-          .filter((t) => {
-            const tag = t.name.toLowerCase();
-            if (tag.length < 2) return false;
-            const re = new RegExp(`\\b${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
-            return re.test(corpus);
-          })
-          .slice(0, 8)
-          .map((t) => t.name);
-        return NextResponse.json({ title, description, suggestedTags });
+        title = `@${oembed.author}: ${oembed.text}`;
+        description = oembed.text;
       }
-      // oembed failed — fall through to generic fetch as last resort
     }
 
-    const { title, description, keywords } = await extractMetadata(url);
+    if (!title) {
+      const meta = await extractMetadata(url);
+      title = meta.title;
+      description = meta.description;
+    }
 
-    // Build text corpus for tag matching (word boundary-safe)
-    const corpus = [title, description, keywords, url].join(" ").toLowerCase();
-
-    // Match existing user tags against the corpus using word boundaries
+    // Use AI-powered tag suggestions
     const allTags = await getAllTags();
-    const suggestedTags = allTags
-      .filter((t) => {
-        const tag = t.name.toLowerCase();
-        if (tag.length < 2) return false;
-        const re = new RegExp(`\\b${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
-        return re.test(corpus);
-      })
-      .slice(0, 8)
-      .map((t) => t.name);
+    const tagNames = allTags.map((t) => t.name);
+    const suggestedTags = await suggestTags(url, tagNames, title);
 
     return NextResponse.json({ title, description, suggestedTags });
   } catch {

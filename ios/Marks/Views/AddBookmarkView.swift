@@ -93,7 +93,7 @@ struct AddBookmarkView: View {
         context.insert(bookmark)
         try? context.save()
 
-        // Try to push immediately
+        // Try to push immediately via web API (which fetches page title automatically)
         do {
             let insert = SupabaseService.BookmarkInsert(
                 url: cleanURL,
@@ -101,12 +101,13 @@ struct AddBookmarkView: View {
                 description: "",
                 tags: tags
             )
-            let row = try await SupabaseService.shared.createBookmark(insert)
-            bookmark.id = row.id
+            let response = try await SupabaseService.shared.createBookmarkViaWebAPI(insert)
+            bookmark.id = response.id
+            bookmark.title = response.title
             bookmark.syncStatus = .synced
             try? context.save()
         } catch {
-            // Will sync later
+            // Will sync later via SyncEngine which also uses web API
         }
 
         isSaving = false

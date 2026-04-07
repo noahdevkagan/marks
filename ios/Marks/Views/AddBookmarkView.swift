@@ -42,9 +42,11 @@ struct AddBookmarkView: View {
                             HStack(spacing: 4) {
                                 Text(tag)
                                 Button {
+                                    print("[Tags] Removing '\(tag)' from \(tags)")
                                     if let i = tags.firstIndex(of: tag) {
                                         tags.remove(at: i)
                                     }
+                                    print("[Tags] After: \(tags)")
                                 } label: {
                                     Image(systemName: "xmark.circle.fill")
                                         .font(.caption)

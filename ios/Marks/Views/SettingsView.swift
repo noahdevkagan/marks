@@ -21,7 +21,7 @@ struct SettingsView: View {
                         }
 
                         Button("Sign Out", role: .destructive) {
-                            Task { await authVM.signOut() }
+                            Task { await authVM.signOut(context: context) }
                         }
 
                         Button("Delete Account", role: .destructive) {

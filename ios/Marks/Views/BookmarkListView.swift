@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct BookmarkListView: View {
+    @EnvironmentObject private var authVM: AuthViewModel
     @Environment(\.modelContext) private var context
     @StateObject private var vm = BookmarkListViewModel()
     @State private var showingAdd = false
@@ -31,6 +32,10 @@ struct BookmarkListView: View {
             .task {
                 guard !UITestSeeder.isUITest else { return }
                 await vm.sync(context: context)
+            }
+            .onChange(of: authVM.isSignedIn) {
+                guard authVM.isSignedIn, !UITestSeeder.isUITest else { return }
+                Task { await vm.sync(context: context) }
             }
         }
     }

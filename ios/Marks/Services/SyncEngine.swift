@@ -4,6 +4,23 @@ import SwiftData
 @MainActor
 final class SyncEngine {
     private let supabase = SupabaseService.shared
+    private static let dateParserFixAppliedKey = "syncDateParserFixApplied"
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        return formatter
+    }()
+
+    private static let fractionalISOFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private func parseSupabaseDate(_ value: String?) -> Date? {
+        guard let value else { return nil }
+        return Self.fractionalISOFormatter.date(from: value) ?? Self.isoFormatter.date(from: value)
+    }
 
     func sync(context: ModelContext) async throws {
         // 1. Import bookmarks saved via the share extension (always works, no auth needed)
@@ -92,10 +109,9 @@ final class SyncEngine {
     // MARK: — Pull remote → local
 
     private func pullRemote(context: ModelContext) async throws {
-        let lastSync = UserDefaults.standard.object(forKey: "lastSyncDate") as? Date
+        let dateParserFixApplied = UserDefaults.standard.bool(forKey: Self.dateParserFixAppliedKey)
+        let lastSync = dateParserFixApplied ? UserDefaults.standard.object(forKey: "lastSyncDate") as? Date : nil
         let rows = try await supabase.fetchBookmarks(since: lastSync)
-
-        let iso = ISO8601DateFormatter()
 
         for row in rows {
             let rowID = row.id
@@ -113,7 +129,8 @@ final class SyncEngine {
                 existing.type = row.type
                 existing.isRead = row.is_read ?? false
                 existing.isArchived = row.is_archived ?? false
-                if let updated = row.updated_at { existing.updatedAt = iso.date(from: updated) ?? .now }
+                existing.createdAt = parseSupabaseDate(row.created_at) ?? existing.createdAt
+                existing.updatedAt = parseSupabaseDate(row.updated_at) ?? existing.updatedAt
 
                 // Cache content if available
                 if let html = row.content_html {
@@ -138,8 +155,8 @@ final class SyncEngine {
                     type: row.type,
                     isRead: row.is_read ?? false,
                     isArchived: row.is_archived ?? false,
-                    createdAt: iso.date(from: row.created_at) ?? .now,
-                    updatedAt: row.updated_at.flatMap { iso.date(from: $0) } ?? .now
+                    createdAt: parseSupabaseDate(row.created_at) ?? .now,
+                    updatedAt: parseSupabaseDate(row.updated_at) ?? .now
                 )
                 context.insert(bookmark)
 
@@ -153,5 +170,6 @@ final class SyncEngine {
         }
 
         UserDefaults.standard.set(Date.now, forKey: "lastSyncDate")
+        UserDefaults.standard.set(true, forKey: Self.dateParserFixAppliedKey)
     }
 }

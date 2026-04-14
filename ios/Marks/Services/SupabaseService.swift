@@ -139,6 +139,8 @@ final class SupabaseService {
         let data = try await request("/auth/v1/token", method: "POST", body: body, query: ["grant_type": "password"])
         let auth = try decoder.decode(AuthResponse.self, from: data)
         saveTokens(access: auth.access_token, refresh: auth.refresh_token)
+        // Force a full re-sync so we get all bookmarks for this account
+        UserDefaults.standard.removeObject(forKey: "lastSyncDate")
     }
 
     func signUp(email: String, password: String) async throws {
@@ -151,6 +153,7 @@ final class SupabaseService {
     func signOut() async throws {
         _ = try? await request("/auth/v1/logout", method: "POST")
         clearTokens()
+        UserDefaults.standard.removeObject(forKey: "lastSyncDate")
     }
 
     func deleteAccount() async throws {

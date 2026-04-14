@@ -11,7 +11,7 @@ platform :ios do
 
   desc "Build and upload to TestFlight"
   lane :beta do
-    increment_build_number
+    increment_build_number(xcodeproj: "Marks.xcodeproj")
     build_app(
       scheme: "Marks",
       export_method: "app-store"
@@ -29,7 +29,7 @@ platform :ios do
 
   desc "Full release: build, upload binary + metadata"
   lane :ship do
-    increment_build_number
+    increment_build_number(xcodeproj: "Marks.xcodeproj")
     build_app(
       scheme: "Marks",
       export_method: "app-store"

@@ -6,9 +6,6 @@ languages(["en-US"])
 scheme("Marks")
 output_directory("./fastlane/screenshots")
 
-# Pin iOS version to match installed simulator runtime
-ios_version("26.3.1")
-
 clear_previous_screenshots(true)
 override_status_bar(true)
 stop_after_first_error(false)

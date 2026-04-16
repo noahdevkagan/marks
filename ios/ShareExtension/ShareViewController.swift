@@ -3,78 +3,114 @@ import UniformTypeIdentifiers
 
 class ShareViewController: UIViewController {
 
-    private let hudView = UIView()
-    private let checkLabel = UILabel()
+    private let cardView = UIView()
+    private let iconLabel = UILabel()
     private let titleLabel = UILabel()
+    private let subtitleLabel = UILabel()
+    private let spinner = UIActivityIndicatorView(style: .large)
+    private var didSave = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .clear
-        view.isOpaque = false
-        setupHUD()
+
+        // Use an opaque dimmed background (not .clear) — reliably
+        // overrides whatever iOS puts behind the extension.
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+
+        setupCard()
         handleSharedURL()
 
-        // Timeout: if nothing happens within 5 seconds, close gracefully
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+        // Safety timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
             self?.close()
         }
     }
 
-    // MARK: - HUD
+    // MARK: - UI
 
-    private func setupHUD() {
-        hudView.backgroundColor = UIColor.systemBackground
-        hudView.layer.cornerRadius = 16
-        hudView.layer.shadowColor = UIColor.black.cgColor
-        hudView.layer.shadowOpacity = 0.15
-        hudView.layer.shadowRadius = 12
-        hudView.layer.shadowOffset = CGSize(width: 0, height: 4)
-        hudView.translatesAutoresizingMaskIntoConstraints = false
-        hudView.alpha = 0
-        hudView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+    private func setupCard() {
+        cardView.backgroundColor = UIColor.systemBackground
+        cardView.layer.cornerRadius = 20
+        cardView.layer.shadowColor = UIColor.black.cgColor
+        cardView.layer.shadowOpacity = 0.25
+        cardView.layer.shadowRadius = 16
+        cardView.layer.shadowOffset = CGSize(width: 0, height: 6)
+        cardView.translatesAutoresizingMaskIntoConstraints = false
 
-        checkLabel.text = "\u{2713}"
-        checkLabel.font = .systemFont(ofSize: 36, weight: .semibold)
-        checkLabel.textColor = .systemGreen
-        checkLabel.textAlignment = .center
-        checkLabel.translatesAutoresizingMaskIntoConstraints = false
+        iconLabel.text = "\u{1F516}"  // 🔖 bookmark
+        iconLabel.font = .systemFont(ofSize: 44)
+        iconLabel.textAlignment = .center
+        iconLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        titleLabel.text = "Saved to Marks"
-        titleLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        titleLabel.text = "Saving to Marks"
+        titleLabel.font = .systemFont(ofSize: 17, weight: .semibold)
         titleLabel.textColor = .label
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        hudView.addSubview(checkLabel)
-        hudView.addSubview(titleLabel)
-        view.addSubview(hudView)
+        subtitleLabel.text = ""
+        subtitleLabel.font = .systemFont(ofSize: 13)
+        subtitleLabel.textColor = .secondaryLabel
+        subtitleLabel.textAlignment = .center
+        subtitleLabel.numberOfLines = 2
+        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        spinner.startAnimating()
+
+        cardView.addSubview(iconLabel)
+        cardView.addSubview(titleLabel)
+        cardView.addSubview(subtitleLabel)
+        cardView.addSubview(spinner)
+        view.addSubview(cardView)
 
         NSLayoutConstraint.activate([
-            hudView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            hudView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            hudView.widthAnchor.constraint(equalToConstant: 180),
-            hudView.heightAnchor.constraint(equalToConstant: 140),
+            cardView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            cardView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            cardView.widthAnchor.constraint(equalToConstant: 260),
 
-            checkLabel.centerXAnchor.constraint(equalTo: hudView.centerXAnchor),
-            checkLabel.topAnchor.constraint(equalTo: hudView.topAnchor, constant: 28),
+            iconLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 28),
+            iconLabel.centerXAnchor.constraint(equalTo: cardView.centerXAnchor),
 
-            titleLabel.centerXAnchor.constraint(equalTo: hudView.centerXAnchor),
-            titleLabel.topAnchor.constraint(equalTo: checkLabel.bottomAnchor, constant: 10),
+            titleLabel.topAnchor.constraint(equalTo: iconLabel.bottomAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
+
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 6),
+            subtitleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            subtitleLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
+
+            spinner.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 16),
+            spinner.centerXAnchor.constraint(equalTo: cardView.centerXAnchor),
+            spinner.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -24),
         ])
     }
 
-    private func showHUD() {
-        UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
-            self.hudView.alpha = 1
-            self.hudView.transform = .identity
+    private func showSuccessAndClose() {
+        guard !didSave else { return }
+        didSave = true
+
+        spinner.stopAnimating()
+        UIView.transition(with: cardView, duration: 0.2, options: .transitionCrossDissolve) {
+            self.iconLabel.text = "\u{2705}"  // ✅
+            self.titleLabel.text = "Saved to Marks"
+            self.subtitleLabel.text = "Open the app to review"
         }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            UIView.animate(withDuration: 0.2, animations: {
-                self?.hudView.alpha = 0
-                self?.hudView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
-            }) { _ in
-                self?.close()
-            }
+            self?.close()
+        }
+    }
+
+    private func showError(_ message: String) {
+        spinner.stopAnimating()
+        UIView.transition(with: cardView, duration: 0.2, options: .transitionCrossDissolve) {
+            self.iconLabel.text = "\u{26A0}\u{FE0F}"  // ⚠️
+            self.titleLabel.text = "Couldn't save"
+            self.subtitleLabel.text = message
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            self?.close()
         }
     }
 
@@ -82,7 +118,7 @@ class ShareViewController: UIViewController {
 
     private func handleSharedURL() {
         guard let items = extensionContext?.inputItems as? [NSExtensionItem] else {
-            close()
+            showError("No content found")
             return
         }
 
@@ -94,24 +130,21 @@ class ShareViewController: UIViewController {
                 if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
                     provider.loadItem(forTypeIdentifier: UTType.url.identifier) { [weak self] data, _ in
                         let urlString: String? = {
-                            if let url = data as? URL {
-                                return url.absoluteString
-                            }
+                            if let url = data as? URL { return url.absoluteString }
                             if let urlData = data as? Data,
                                let url = URL(dataRepresentation: urlData, relativeTo: nil) {
                                 return url.absoluteString
                             }
-                            if let text = data as? String, text.hasPrefix("http") {
-                                return text
-                            }
+                            if let text = data as? String, text.hasPrefix("http") { return text }
                             return nil
                         }()
-                        guard let urlString else {
-                            Task { @MainActor in self?.close() }
-                            return
-                        }
                         Task { @MainActor in
-                            await self?.saveBookmark(url: urlString, title: pageTitle)
+                            guard let self else { return }
+                            if let urlString {
+                                await self.saveBookmark(url: urlString, title: pageTitle)
+                            } else {
+                                self.showError("Invalid URL")
+                            }
                         }
                     }
                     return
@@ -119,13 +152,13 @@ class ShareViewController: UIViewController {
 
                 if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
                     provider.loadItem(forTypeIdentifier: UTType.plainText.identifier) { [weak self] data, _ in
-                        guard let text = data as? String,
-                              text.hasPrefix("http") else {
-                            Task { @MainActor in self?.close() }
-                            return
-                        }
                         Task { @MainActor in
-                            await self?.saveBookmark(url: text, title: "")
+                            guard let self else { return }
+                            if let text = data as? String, text.hasPrefix("http") {
+                                await self.saveBookmark(url: text, title: "")
+                            } else {
+                                self.showError("No URL found")
+                            }
                         }
                     }
                     return
@@ -133,7 +166,7 @@ class ShareViewController: UIViewController {
             }
         }
 
-        close()
+        showError("No URL found")
     }
 
     // MARK: - Save
@@ -144,7 +177,7 @@ class ShareViewController: UIViewController {
         var queue = defaults?.array(forKey: "pendingBookmarks") as? [[String: String]] ?? []
         queue.append(["url": url, "title": title])
         defaults?.set(queue, forKey: "pendingBookmarks")
-        showHUD()
+        showSuccessAndClose()
     }
 
     // MARK: - Close

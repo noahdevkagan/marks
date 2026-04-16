@@ -1,26 +1,82 @@
 default_platform(:ios)
 
+XCODEPROJ = "Marks.xcodeproj"
+SCHEME = "Marks"
+
+# Update MARKETING_VERSION or CURRENT_PROJECT_VERSION in the pbxproj directly,
+# avoiding agvtool which hardcodes values into Info.plists.
+PBXPROJ = File.expand_path("../#{XCODEPROJ}/project.pbxproj", __dir__)
+
+def set_pbxproj_value(key, value)
+  content = File.read(PBXPROJ)
+  updated = content.gsub(/#{key} = [^;]+;/, "#{key} = #{value};")
+  File.write(PBXPROJ, updated)
+end
+
+def get_pbxproj_value(key)
+  content = File.read(PBXPROJ)
+  match = content.match(/#{key} = ([^;]+);/)
+  match ? match[1] : nil
+end
+
+API_KEY_PATH = File.expand_path("~/.appstoreconnect/AuthKey_65LKS2V2WM.p8")
+API_KEY_ID = "65LKS2V2WM"
+API_ISSUER_ID = "c69ffd7a-8a60-457a-8af1-657dada57476"
+
+def authenticate_app_store_connect
+  app_store_connect_api_key(
+    key_id: API_KEY_ID,
+    issuer_id: API_ISSUER_ID,
+    key_filepath: API_KEY_PATH,
+    duration: 1200,
+    in_house: false
+  )
+end
+
 platform :ios do
+  before_all do
+    # Point to Xcode.app without needing sudo (DEVELOPER_DIR overrides xcode-select)
+    ENV["DEVELOPER_DIR"] = "/Applications/Xcode.app/Contents/Developer"
+  end
+
   desc "Take App Store screenshots"
   lane :screenshots do
-    # Run each device separately to avoid simultaneous simulator launch crash
-    ["iPhone 17 Pro Max", "iPhone 17 Pro"].each do |device|
+    ["iPhone 16 Pro Max", "iPhone 16 Pro"].each do |device|
       capture_screenshots(devices: [device])
     end
   end
 
   desc "Build and upload to TestFlight"
   lane :beta do
-    increment_build_number(xcodeproj: "Marks.xcodeproj")
+    setup_ci if ENV["CI"]
+    authenticate_app_store_connect
+
+    # Auto-increment build number
+    build = (get_pbxproj_value("CURRENT_PROJECT_VERSION") || "0").to_i + 1
+    set_pbxproj_value("CURRENT_PROJECT_VERSION", build)
+    UI.success("Build number → #{build}")
+
     build_app(
-      scheme: "Marks",
-      export_method: "app-store"
+      project: XCODEPROJ,
+      scheme: SCHEME,
+      export_method: "app-store",
+      clean: true
     )
     upload_to_testflight(skip_waiting_for_build_processing: true)
   end
 
+  desc "Upload only — re-uses the existing Marks.ipa (no rebuild)"
+  lane :upload_only do
+    authenticate_app_store_connect
+    upload_to_testflight(
+      ipa: "Marks.ipa",
+      skip_waiting_for_build_processing: true
+    )
+  end
+
   desc "Upload metadata and screenshots to App Store"
   lane :release do
+    authenticate_app_store_connect
     deliver(
       skip_binary_upload: true,
       force: true
@@ -29,11 +85,28 @@ platform :ios do
 
   desc "Full release: build, upload binary + metadata"
   lane :ship do
-    increment_build_number(xcodeproj: "Marks.xcodeproj")
+    setup_ci if ENV["CI"]
+    authenticate_app_store_connect
+
+    build = (get_pbxproj_value("CURRENT_PROJECT_VERSION") || "0").to_i + 1
+    set_pbxproj_value("CURRENT_PROJECT_VERSION", build)
+    UI.success("Build number → #{build}")
+
     build_app(
-      scheme: "Marks",
-      export_method: "app-store"
+      project: XCODEPROJ,
+      scheme: SCHEME,
+      export_method: "app-store",
+      clean: true
     )
     deliver(force: true)
+  end
+
+  desc "Bump version number (e.g. fastlane bump version:1.4.1)"
+  lane :bump do |options|
+    version = options[:version]
+    UI.user_error!("Usage: fastlane bump version:X.Y.Z") unless version
+
+    set_pbxproj_value("MARKETING_VERSION", version)
+    UI.success("Version bumped to #{version}")
   end
 end

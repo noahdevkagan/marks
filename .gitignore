@@ -3,3 +3,10 @@ node_modules/
 .next/
 .env.local
 .env*.local
+
+# iOS build artifacts
+ios/build/
+ios/*.ipa
+ios/*.dSYM.zip
+ios/**/xcuserdata/
+ios/fastlane/report.xml

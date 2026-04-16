@@ -1,8 +1,5 @@
 # App Store delivery configuration
-# Uncomment apple_id/team_id in Appfile before using
 
-# Metadata
-username(ENV["FASTLANE_USER"] || "")
 app_identifier("com.noah.Marks")
 
 # Metadata directory

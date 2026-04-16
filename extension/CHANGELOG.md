@@ -1,5 +1,8 @@
 # Extension Changelog
 
+## 2.3.0
+SEO: rewrite Chrome Web Store name and short description for discoverability
+
 ## 2.2.0
 Prefill existing tags in browser extension popup; extract original URL from archive.is pages for tag prefill
 

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_shared.css">
+<style>
+  .reader {
+    background: #fdf6e3; padding: 44px 0; height: 500px; overflow: hidden;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  .reader-inner { max-width: 620px; margin: 0 auto; padding: 0 40px; }
+  .kicker { font-size: 12px; color: #93785b; font-family: -apple-system, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; font-weight: 600; }
+  .reader h1 {
+    font-size: 30px; font-weight: 700; letter-spacing: -0.01em;
+    line-height: 1.2; color: #3a2f1a; margin-bottom: 10px;
+  }
+  .reader .byline { font-size: 13px; color: #7a6850; margin-bottom: 22px; font-style: italic; font-family: -apple-system, sans-serif; font-style: normal; }
+  .reader p { font-size: 15px; color: #3a2f1a; line-height: 1.7; margin-bottom: 14px; }
+  .reader .drop { font-size: 14px; color: #6b5a42; margin-bottom: 20px; font-style: italic; }
+  .offline-badge {
+    position: absolute; top: 18px; right: 20px;
+    background: rgba(46, 125, 50, 0.12); color: #1e7a32;
+    padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    font-family: -apple-system, sans-serif; display: flex; align-items: center; gap: 6px;
+  }
+  .offline-badge::before {
+    content: ''; width: 7px; height: 7px; border-radius: 50%; background: #1e7a32;
+  }
+</style></head>
+<body>
+  <div class="canvas">
+    <div class="headline">Read <span class="accent">distraction-free</span>, even offline</div>
+    <div class="subhead">Every saved page is archived. No paywalls, no popups, no cookie banners.</div>
+    <div class="mockup">
+      <div class="browser-bar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <div class="url">getmarks.sh/reader/ai-agents-knowledge-work</div>
+      </div>
+      <div class="reader" style="position: relative;">
+        <div class="offline-badge">Saved · reads offline</div>
+        <div class="reader-inner">
+          <div class="kicker">The New York Times</div>
+          <h1>How AI Agents Are Quietly Rewiring Knowledge Work</h1>
+          <div class="byline">By Kashmir Hill · April 10, 2026</div>
+          <p class="drop">For years, productivity software promised to organize our work. The new generation of AI agents promises something different — to actually do it.</p>
+          <p>Across industries, teams are quietly handing off repetitive tasks to software that can read, write, decide, and follow up. The results are surprising even the people who built them.</p>
+          <p>"We thought this would save people ten minutes a day," one executive said. "It's saving them ten hours a week."</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body></html>

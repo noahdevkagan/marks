@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_shared.css">
+<style>
+  .mockup-body { display: flex; height: 500px; background: #fff; position: relative; }
+  .twitter-col {
+    flex: 1; padding: 30px 40px 0; background: #fff;
+    border-right: 1px solid #eff3f4;
+  }
+  .tweet {
+    display: flex; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #eff3f4; padding-top: 4px;
+  }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #0066cc, #1da1f2);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 17px;
+  }
+  .tweet-main { flex: 1; min-width: 0; }
+  .tweet-head { display: flex; align-items: center; gap: 5px; font-size: 14px; }
+  .tweet-name { font-weight: 700; color: #0f1419; }
+  .tweet-handle { color: #536471; }
+  .tweet-time { color: #536471; }
+  .tweet-body {
+    font-size: 15px; color: #0f1419; line-height: 1.4; margin-top: 4px;
+  }
+  .tweet-body .hash { color: #1da1f2; }
+  .tweet-actions {
+    display: flex; gap: 48px; margin-top: 12px; color: #536471; font-size: 13px;
+  }
+  .tweet-actions span { display: flex; align-items: center; gap: 6px; }
+
+  .popup {
+    position: absolute; top: 16px; right: 24px;
+    width: 320px; background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0, 20, 60, 0.18), 0 0 0 1px rgba(0,0,0,0.04);
+    padding: 16px 18px;
+    font-size: 13px;
+  }
+  .popup-arrow {
+    position: absolute; top: -7px; right: 28px;
+    width: 14px; height: 14px; background: #fff;
+    transform: rotate(45deg);
+    box-shadow: -1px -1px 2px rgba(0,0,0,0.04);
+  }
+  .popup h2 { font-size: 15px; font-weight: 600; margin-bottom: 10px; letter-spacing: -0.01em; }
+  .popup .src-tweet {
+    background: #f7f9fa; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px;
+    font-size: 12px; color: #0f1419; line-height: 1.45;
+  }
+  .popup .src-tweet .by { color: #536471; font-size: 11px; margin-bottom: 4px; }
+  .popup label { display: block; font-size: 10px; font-weight: 600; color: #888; margin: 10px 0 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .popup label:first-of-type { margin-top: 0; }
+  .tag-box {
+    display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 7px;
+    border: 1px solid #e5e5e5; border-radius: 5px; background: #fff;
+  }
+  .tag { padding: 2px 7px; background: #0066cc; color: #fff; border-radius: 3px; font-size: 11px; }
+  .auto-note {
+    margin-top: 8px; font-size: 11px; color: #0066cc; font-weight: 500;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .save-btn {
+    width: 100%; padding: 9px; background: #0066cc; color: #fff; border: none;
+    border-radius: 6px; font-size: 13px; font-weight: 600; margin-top: 14px;
+    font-family: inherit;
+  }
+</style></head>
+<body>
+  <div class="canvas">
+    <div class="headline">Save tweets with <span class="accent">hashtags as tags</span></div>
+    <div class="subhead">Hashtags become tags automatically. Full tweet text saved and searchable.</div>
+    <div class="mockup">
+      <div class="browser-bar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <div class="url">x.com/paulg/status/1782038412</div>
+      </div>
+      <div class="mockup-body">
+        <div class="twitter-col">
+          <div class="tweet">
+            <div class="avatar">PG</div>
+            <div class="tweet-main">
+              <div class="tweet-head">
+                <span class="tweet-name">Paul Graham</span>
+                <span class="tweet-handle">@paulg</span>
+                <span>·</span>
+                <span class="tweet-time">2h</span>
+              </div>
+              <div class="tweet-body">The best founders aren't the ones with the best ideas — they're the ones who ship the fastest and learn the most from each attempt. <span class="hash">#startups</span> <span class="hash">#founders</span> <span class="hash">#buildinpublic</span></div>
+              <div class="tweet-actions">
+                <span>💬 142</span><span>🔁 890</span><span>♡ 4.2K</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="popup">
+          <div class="popup-arrow"></div>
+          <h2>Save tweet to Marks</h2>
+          <div class="src-tweet">
+            <div class="by">Paul Graham · @paulg</div>
+            The best founders aren't the ones with the best ideas — they're the ones who ship the fastest and learn the most…
+          </div>
+          <label>Tags (from #hashtags)</label>
+          <div class="tag-box">
+            <span class="tag">startups</span>
+            <span class="tag">founders</span>
+            <span class="tag">buildinpublic</span>
+          </div>
+          <div class="auto-note">✨ Hashtags converted automatically</div>
+          <button class="save-btn">Save to Marks</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body></html>

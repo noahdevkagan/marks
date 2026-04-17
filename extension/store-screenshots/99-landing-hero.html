@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_shared.css">
+<style>
+  /* Clean mockup only — no headline, bigger so more product detail is visible */
+  .canvas { padding: 30px 60px 0; height: auto; min-height: unset; }
+  html, body { height: auto; }
+  .mockup { width: 1160px; }
+
+  .app { background: #fafafa; display: flex; }
+  .sidebar {
+    width: 240px; background: #fff; border-right: 1px solid #eee;
+    padding: 22px 14px; overflow: hidden;
+  }
+  .brand {
+    font-size: 18px; font-weight: 700; letter-spacing: -0.02em;
+    margin-bottom: 20px; padding: 0 6px; color: #1a1a1a;
+  }
+  .brand .dot-blue { color: #0066cc; }
+  .nav-h { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #888; margin: 18px 0 6px; padding: 0 6px; font-weight: 600; }
+  .nav-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 8px; border-radius: 5px; font-size: 13px; color: #333; margin-bottom: 2px;
+  }
+  .nav-item.active { background: #e8f0fa; color: #0066cc; font-weight: 600; }
+  .nav-count { font-size: 11px; color: #999; }
+  .nav-item.active .nav-count { color: #0066cc; }
+  .tag-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 8px; }
+
+  .main { flex: 1; padding: 22px 30px; overflow: hidden; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .search {
+    flex: 1; max-width: 460px; background: #fff; border: 1px solid #e5e5e5;
+    border-radius: 7px; padding: 8px 12px; font-size: 13px; color: #888;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .view-toggle { display: flex; gap: 4px; background: #fff; border: 1px solid #e5e5e5; border-radius: 7px; padding: 2px; margin-left: 14px; }
+  .view-toggle span { padding: 4px 10px; font-size: 12px; color: #666; border-radius: 4px; }
+  .view-toggle span.active { background: #f0f0f0; color: #1a1a1a; font-weight: 600; }
+
+  .stat-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .stat { flex: 1; background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 12px 14px; }
+  .stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .stat-val { font-size: 22px; font-weight: 700; color: #1a1a1a; margin-top: 2px; letter-spacing: -0.01em; }
+  .stat-sub { font-size: 11px; color: #0066cc; margin-top: 2px; font-weight: 500; }
+
+  .bookmarks { display: flex; flex-direction: column; gap: 8px; }
+  .bookmark {
+    background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 12px 14px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .favicon {
+    width: 28px; height: 28px; border-radius: 5px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 13px; font-weight: 700;
+  }
+  .fv1 { background: #ff5722; }
+  .fv2 { background: #1da1f2; }
+  .fv3 { background: #0066cc; }
+  .bookmark-main { flex: 1; min-width: 0; }
+  .bookmark-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; letter-spacing: -0.005em; }
+  .bookmark-meta { font-size: 11px; color: #888; margin-bottom: 6px; }
+  .bookmark-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .mini-tag { font-size: 10px; padding: 2px 6px; background: #f0f0f0; color: #555; border-radius: 3px; }
+  .mini-tag.ai { background: #e8f0fa; color: #0066cc; }
+</style></head>
+<body>
+  <div class="canvas">
+    <div class="mockup">
+      <div class="browser-bar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <div class="url">getmarks.sh</div>
+      </div>
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand">Mark<span class="dot-blue">s</span></div>
+          <div class="nav-h">Library</div>
+          <div class="nav-item active"><span>All bookmarks</span><span class="nav-count">2,847</span></div>
+          <div class="nav-item"><span>Read later</span><span class="nav-count">142</span></div>
+          <div class="nav-item"><span>Kindle highlights</span><span class="nav-count">1,204</span></div>
+          <div class="nav-h">Top tags</div>
+          <div class="nav-item"><span><span class="tag-dot" style="background:#0066cc"></span>ai</span><span class="nav-count">382</span></div>
+          <div class="nav-item"><span><span class="tag-dot" style="background:#e11d48"></span>startups</span><span class="nav-count">217</span></div>
+          <div class="nav-item"><span><span class="tag-dot" style="background:#16a34a"></span>design</span><span class="nav-count">189</span></div>
+          <div class="nav-item"><span><span class="tag-dot" style="background:#ca8a04"></span>writing</span><span class="nav-count">156</span></div>
+          <div class="nav-item"><span><span class="tag-dot" style="background:#7c3aed"></span>productivity</span><span class="nav-count">134</span></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="search">🔍 Search 2,847 bookmarks and highlights…</div>
+            <div class="view-toggle"><span class="active">List</span><span>Grid</span></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat"><div class="stat-label">Saved</div><div class="stat-val">2,847</div><div class="stat-sub">+42 this week</div></div>
+            <div class="stat"><div class="stat-label">Read</div><div class="stat-val">1,392</div><div class="stat-sub">49% of library</div></div>
+            <div class="stat"><div class="stat-label">Tags</div><div class="stat-val">186</div><div class="stat-sub">AI-suggested</div></div>
+          </div>
+          <div class="bookmarks">
+            <div class="bookmark">
+              <div class="favicon fv1">N</div>
+              <div class="bookmark-main">
+                <div class="bookmark-title">How AI Agents Are Quietly Rewiring Knowledge Work</div>
+                <div class="bookmark-meta">nytimes.com · saved 2 min ago · 8 min read</div>
+                <div class="bookmark-tags">
+                  <span class="mini-tag">ai</span><span class="mini-tag">productivity</span>
+                  <span class="mini-tag ai">✨ agents</span><span class="mini-tag ai">✨ future-of-work</span>
+                </div>
+              </div>
+            </div>
+            <div class="bookmark">
+              <div class="favicon fv2">𝕏</div>
+              <div class="bookmark-main">
+                <div class="bookmark-title">Paul Graham on shipping vs. ideas</div>
+                <div class="bookmark-meta">x.com/paulg · saved 1 hour ago</div>
+                <div class="bookmark-tags">
+                  <span class="mini-tag">startups</span><span class="mini-tag">founders</span>
+                  <span class="mini-tag">buildinpublic</span>
+                </div>
+              </div>
+            </div>
+            <div class="bookmark">
+              <div class="favicon fv3">K</div>
+              <div class="bookmark-main">
+                <div class="bookmark-title">Thinking, Fast and Slow — 83 Kindle highlights</div>
+                <div class="bookmark-meta">Daniel Kahneman · synced today</div>
+                <div class="bookmark-tags">
+                  <span class="mini-tag">psychology</span><span class="mini-tag">kindle</span>
+                  <span class="mini-tag ai">✨ decision-making</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body></html>

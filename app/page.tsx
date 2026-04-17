@@ -1,16 +1,27 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getBookmarks, getAllTags } from "@/lib/db";
+import { createClient } from "@/lib/supabase-server";
 import { SearchBar } from "./search-bar";
 import { Bookmarklet } from "./bookmarklet";
 import { BookmarkItem } from "./bookmark-item";
 import { ConfirmBanner } from "./confirm-banner";
+import { Landing } from "./landing";
 
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{ tag?: string; page?: string }>;
 }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return <Landing />;
+  }
+
   const params = await searchParams;
   const tag = params.tag;
   const page = parseInt(params.page ?? "1", 10);

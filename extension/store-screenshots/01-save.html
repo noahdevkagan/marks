@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_shared.css">
+<style>
+  .mockup-body { display: flex; height: 500px; background: #fafafa; position: relative; }
+  .article {
+    flex: 1; padding: 40px 56px; background: #fff;
+    font-family: Georgia, serif;
+  }
+  .article h1 { font-size: 26px; font-weight: 700; margin-bottom: 14px; color: #1a1a1a; letter-spacing: -0.01em; }
+  .article .meta { font-size: 12px; color: #888; margin-bottom: 22px; font-family: inherit; }
+  .article p { font-size: 13px; color: #333; line-height: 1.65; margin-bottom: 12px; }
+  .popup {
+    position: absolute; top: 16px; right: 24px;
+    width: 330px; background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0, 20, 60, 0.18), 0 0 0 1px rgba(0,0,0,0.04);
+    padding: 16px 18px;
+    font-size: 13px;
+  }
+  .popup-arrow {
+    position: absolute; top: -7px; right: 28px;
+    width: 14px; height: 14px; background: #fff;
+    transform: rotate(45deg);
+    box-shadow: -1px -1px 2px rgba(0,0,0,0.04);
+  }
+  .popup h2 { font-size: 15px; font-weight: 600; margin-bottom: 12px; letter-spacing: -0.01em; }
+  .popup label { display: block; font-size: 10px; font-weight: 600; color: #888; margin: 10px 0 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .popup label:first-of-type { margin-top: 0; }
+  .popup input, .popup textarea {
+    width: 100%; padding: 6px 9px; border: 1px solid #e5e5e5;
+    border-radius: 5px; font-size: 12px; background: #fff; color: #1a1a1a;
+    font-family: inherit;
+  }
+  .tag-box {
+    display: flex; flex-wrap: wrap; gap: 4px; padding: 5px 7px;
+    border: 1px solid #e5e5e5; border-radius: 5px; background: #fff; min-height: 28px;
+    align-items: center;
+  }
+  .tag { padding: 2px 7px; background: #f0f0f0; color: #555; border-radius: 3px; font-size: 11px; }
+  .tag.selected { background: #0066cc; color: #fff; }
+  .suggested { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; align-items: center; }
+  .suggested .lbl { font-size: 10px; color: #0066cc; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sparkle { font-size: 11px; }
+  .stag {
+    padding: 2px 7px; border: 1px dashed #0066cc; color: #0066cc;
+    border-radius: 3px; font-size: 11px; background: rgba(0,102,204,0.04);
+  }
+  .save-btn {
+    width: 100%; padding: 9px; background: #0066cc; color: #fff; border: none;
+    border-radius: 6px; font-size: 13px; font-weight: 600; margin-top: 14px; cursor: pointer;
+    font-family: inherit;
+  }
+</style></head>
+<body>
+  <div class="canvas">
+    <div class="headline">Save any page in <span class="accent">one click</span></div>
+    <div class="subhead">AI suggests the perfect tags based on what you're reading</div>
+    <div class="mockup">
+      <div class="browser-bar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <div class="url">nytimes.com/2026/04/10/technology/ai-agents-workflow.html</div>
+      </div>
+      <div class="mockup-body">
+        <div class="article">
+          <h1>How AI Agents Are Quietly Rewiring Knowledge Work</h1>
+          <div class="meta">By Kashmir Hill · April 10, 2026 · 8 min read</div>
+          <p>For years, productivity software promised to organize our work. The new generation of AI agents promises something different — to actually do it.</p>
+          <p>Across industries, teams are quietly handing off repetitive tasks to software that can read, write, decide, and follow up. The results are surprising even the people who built them.</p>
+          <p>"We thought this would save people ten minutes a day," said one executive. "It's saving them ten hours a week."</p>
+          <p>The shift has implications for how knowledge workers spend their time — and whether entire categories of software will need to reinvent themselves.</p>
+        </div>
+        <div class="popup">
+          <div class="popup-arrow"></div>
+          <h2>Save to Marks</h2>
+          <label>Title</label>
+          <input type="text" value="How AI Agents Are Quietly Rewiring Knowledge Work" readonly>
+          <label>Tags</label>
+          <div class="tag-box">
+            <span class="tag selected">ai ×</span>
+            <span class="tag selected">productivity ×</span>
+          </div>
+          <div class="suggested">
+            <span class="lbl">✨ AI suggests</span>
+            <span class="stag">+ agents</span>
+            <span class="stag">+ future-of-work</span>
+            <span class="stag">+ nytimes</span>
+          </div>
+          <button class="save-btn">Save to Marks</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body></html>

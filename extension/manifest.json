@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Marks - Bookmarks, AI Reader, Pocket Alt",
-  "version": "2.2.0",
-  "description": "Save bookmarks to Marks with auto-suggested tags. Sync Kindle highlights.",
+  "name": "Marks: Pocket Alternative, Bookmark Manager & AI Read Later",
+  "version": "2.3.0",
+  "description": "Bookmark manager & read-later app. AI-tagged bookmarks, offline reader, Kindle highlights sync. The open Pocket alternative.",
   "permissions": [
     "activeTab",
     "contextMenus",

@@ -5,7 +5,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAuthPage = path === "/login" || path === "/signup";
   const isPublicPath =
-    isAuthPage || path.startsWith("/api/auth") || path === "/privacy" || path === "/support";
+    isAuthPage || path.startsWith("/api/auth") || path === "/privacy" || path === "/support" || path === "/";
 
   // Fast path: if no auth cookie exists, skip the Supabase network call entirely
   const hasAuthCookie = request.cookies

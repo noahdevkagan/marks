@@ -2732,3 +2732,315 @@ header nav .nav-add {
   .hero-bm-tags span { background: #2a2a2a; color: #aaa; }
   .hero-bm-tags span.ai { background: rgba(77, 159, 255, 0.15); color: #4d9fff; }
 }
+
+/* ============================================================
+   Library (logged-in / view)
+   ============================================================ */
+.lib-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(0, 102, 204, 0.08), transparent 60%),
+    radial-gradient(circle at 85% 90%, rgba(0, 102, 204, 0.05), transparent 55%),
+    linear-gradient(135deg, #f5f8fc 0%, #ffffff 100%);
+  display: flex;
+  color: #1a1a1a;
+}
+
+.lib-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 22px 14px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.lib-brand {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 18px;
+  padding: 0 8px;
+}
+.lib-brand a { color: #1a1a1a; }
+.lib-brand a:hover { text-decoration: none; }
+.lib-brand span { color: #0066cc; }
+
+.lib-sec {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  margin: 18px 0 6px;
+  padding: 0 8px;
+  font-weight: 600;
+}
+
+.lib-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: #333 !important;
+  margin-bottom: 1px;
+}
+
+.lib-nav:hover {
+  background: rgba(0, 0, 0, 0.04);
+  text-decoration: none;
+  color: #1a1a1a !important;
+}
+
+.lib-nav-active {
+  background: #e8f0fa !important;
+  color: #0066cc !important;
+  font-weight: 600;
+}
+
+.lib-nav-clear {
+  color: #888 !important;
+  font-size: 12px;
+}
+
+.lib-count {
+  font-size: 11.5px;
+  color: #999;
+  font-variant-numeric: tabular-nums;
+}
+
+.lib-nav-active .lib-count { color: #0066cc; }
+
+.lib-td {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.lib-sidebar-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lib-action {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #333 !important;
+}
+
+.lib-action:hover {
+  background: rgba(0, 0, 0, 0.04);
+  text-decoration: none;
+}
+
+.lib-action-primary {
+  color: #0066cc !important;
+  font-weight: 600;
+}
+
+.lib-main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 40px 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.lib-topbar {
+  margin-bottom: 20px;
+}
+
+.lib-search-wrap {
+  width: 100%;
+}
+
+.lib-search-wrap .search-container {
+  width: 100%;
+}
+
+.lib-search-wrap .search-input {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.lib-search-wrap .search-input:focus {
+  border-color: #0066cc;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.lib-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.lib-stat {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.lib-stat small {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.lib-stat strong {
+  display: block;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 3px;
+  color: #1a1a1a;
+}
+
+.lib-stat em {
+  display: block;
+  font-size: 11.5px;
+  color: #0066cc;
+  font-style: normal;
+  font-weight: 500;
+  margin-top: 3px;
+}
+
+/* Bookmark cards inside library */
+.lib-bookmark-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lib-bookmark-list .bookmark-item {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.lib-bookmark-list .bookmark-item:hover {
+  border-color: #d5dde6;
+  box-shadow: 0 2px 8px rgba(0, 40, 100, 0.06);
+}
+
+.lib-bookmark-list .bookmark-item:last-child {
+  border-bottom: 1px solid #eee;
+}
+
+.lib-pagination {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.lib-empty {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: #888;
+  background: #fff;
+  border: 1px dashed #e5e5e5;
+  border-radius: 10px;
+}
+
+.lib-main .bookmarklet-section {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+  color: #888;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .lib-shell { flex-direction: column; }
+  .lib-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 14px 16px;
+  }
+  .lib-sidebar-footer { flex-direction: row; flex-wrap: wrap; border-top: none; padding-top: 10px; }
+  .lib-main { padding: 18px 16px; }
+  .lib-stats { grid-template-columns: 1fr; gap: 8px; }
+  .lib-stat strong { font-size: 22px; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .lib-shell {
+    background:
+      radial-gradient(circle at 20% 10%, rgba(77, 159, 255, 0.08), transparent 60%),
+      radial-gradient(circle at 85% 90%, rgba(77, 159, 255, 0.05), transparent 55%),
+      linear-gradient(135deg, #0a0d12 0%, #111 100%);
+    color: #e5e5e5;
+  }
+  .lib-sidebar {
+    background: rgba(26, 26, 26, 0.6);
+    border-right-color: rgba(255, 255, 255, 0.06);
+  }
+  .lib-brand a { color: #e5e5e5; }
+  .lib-brand span { color: #4d9fff; }
+  .lib-sec { color: #666; }
+  .lib-nav { color: #aaa !important; }
+  .lib-nav:hover { background: rgba(255, 255, 255, 0.04); color: #e5e5e5 !important; }
+  .lib-nav-active {
+    background: rgba(77, 159, 255, 0.12) !important;
+    color: #4d9fff !important;
+  }
+  .lib-nav-active .lib-count { color: #4d9fff; }
+  .lib-count { color: #666; }
+  .lib-sidebar-footer { border-top-color: rgba(255, 255, 255, 0.06); }
+  .lib-action { color: #aaa !important; }
+  .lib-action:hover { background: rgba(255, 255, 255, 0.04); }
+  .lib-action-primary { color: #4d9fff !important; }
+  .lib-search-wrap .search-input {
+    background: #1a1a1a;
+    border-color: #333;
+    color: #e5e5e5;
+  }
+  .lib-search-wrap .search-input:focus {
+    border-color: #4d9fff;
+    box-shadow: 0 0 0 3px rgba(77, 159, 255, 0.15);
+  }
+  .lib-stat { background: #1a1a1a; border-color: #333; }
+  .lib-stat small { color: #666; }
+  .lib-stat strong { color: #e5e5e5; }
+  .lib-stat em { color: #4d9fff; }
+  .lib-bookmark-list .bookmark-item { background: #1a1a1a; border-color: #333; }
+  .lib-bookmark-list .bookmark-item:hover { border-color: #444; }
+  .lib-pagination { border-top-color: rgba(255, 255, 255, 0.06); }
+  .lib-empty { background: #1a1a1a; border-color: #333; color: #666; }
+  .lib-main .bookmarklet-section { border-top-color: rgba(255, 255, 255, 0.06); color: #666; }
+}

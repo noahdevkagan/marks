@@ -267,3 +267,23 @@ export async function getAllTags(): Promise<{ name: string; count: number }[]> {
     count: Number(row.count),
   }));
 }
+
+export async function getLibraryStats(): Promise<{
+  saved: number;
+  read: number;
+  readLater: number;
+}> {
+  const supabase = await createClient();
+
+  const [saved, read, readLater] = await Promise.all([
+    supabase.from("bookmarks").select("*", { count: "exact", head: true }),
+    supabase.from("bookmarks").select("*", { count: "exact", head: true }).eq("is_read", true),
+    supabase.from("bookmarks").select("*", { count: "exact", head: true }).eq("is_read", false),
+  ]);
+
+  return {
+    saved: saved.count ?? 0,
+    read: read.count ?? 0,
+    readLater: readLater.count ?? 0,
+  };
+}

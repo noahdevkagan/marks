@@ -117,6 +117,11 @@ function cleanLinkedInHtml(html: string, url: string): string {
   return blocks.join("\n");
 }
 
+/** Strip trailing suffixes like /analytics, /retweets, /likes from tweet URLs */
+function cleanTweetUrl(url: string): string {
+  return url.replace(/\/(analytics|retweets|quotes|likes|hidden|history)\/?$/, "");
+}
+
 function getYouTubeId(url: string): string {
   try {
     const u = new URL(url);
@@ -133,6 +138,9 @@ export default async function ReaderPage({ params }: Props) {
 
   const bookmark = await getBookmark(id);
   if (!bookmark) notFound();
+
+  // Clean URL for display (strip /analytics etc. from tweet URLs)
+  const sourceUrl = bookmark.type === "tweet" ? cleanTweetUrl(bookmark.url) : bookmark.url;
 
   // Fetch archived content and enrichment data
   const supabase = await createClient();
@@ -181,7 +189,7 @@ export default async function ReaderPage({ params }: Props) {
       <nav className="reader-nav">
         <Link href="/">&larr; back</Link>
         <div className="reader-nav-actions">
-          <a href={bookmark.url} target="_blank" rel="noopener noreferrer">
+          <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
             original
           </a>
           <AnalyzeButton bookmarkId={id} />
@@ -218,7 +226,7 @@ export default async function ReaderPage({ params }: Props) {
                 ? (bookmark.type_metadata?.page_count
                     ? `${bookmark.type_metadata.page_count} pages`
                     : "uploaded")
-                : new URL(bookmark.url).hostname.replace("www.", "")}
+                : new URL(sourceUrl).hostname.replace("www.", "")}
             </span>
             {archived && bookmark.type !== "video" && bookmark.type !== "image" && (
               <>
@@ -323,7 +331,7 @@ export default async function ReaderPage({ params }: Props) {
                 </div>
               )}
               <a
-                href={bookmark.url}
+                href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="reader-tweet-link"

@@ -218,39 +218,57 @@ async function showSaveView() {
               const bodyText = articleReadView.innerText?.trim() || "";
               return { title: articleTitle, text: bodyText, contentHtml, handle, isArticle: true, mediaUrls };
             }
-            // Regular tweet
-            const article = document.querySelector("article");
-            const textEl = article?.querySelector('[data-testid="tweetText"]');
-            const text = textEl?.textContent?.trim() || "";
+            // Regular tweet — capture full thread from same author
+            const articles = document.querySelectorAll("article");
+            if (articles.length === 0) return { title: "", text: "", contentHtml: "", handle: "", isArticle: false };
             const handle = getHandle();
-            let contentHtml = "";
-            if (textEl) {
-              function walkTweet(parent) {
-                let h = "";
-                for (const node of parent.childNodes) {
-                  if (node.nodeType === Node.TEXT_NODE) { h += esc(node.textContent || ""); }
-                  else if (node.nodeType === Node.ELEMENT_NODE) {
-                    const el = node;
-                    if (el.tagName === "BR") { h += "<br>"; }
-                    else if (el.tagName === "IMG") { h += el.alt || ""; }
-                    else if (el.tagName === "A" || el.querySelector("a")) {
-                      const a = el.tagName === "A" ? el : el.querySelector("a");
-                      const href = a?.getAttribute("href") || "";
-                      const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
-                      h += '<a href="' + esc(fullHref) + '">' + esc(el.textContent || "") + "</a>";
-                    } else { h += walkTweet(el); }
-                  }
+
+            function walkTweet(parent) {
+              let h = "";
+              for (const node of parent.childNodes) {
+                if (node.nodeType === Node.TEXT_NODE) { h += esc(node.textContent || ""); }
+                else if (node.nodeType === Node.ELEMENT_NODE) {
+                  const el = node;
+                  if (el.tagName === "BR") { h += "<br>"; }
+                  else if (el.tagName === "IMG") { h += el.alt || ""; }
+                  else if (el.tagName === "A" || el.querySelector("a")) {
+                    const a = el.tagName === "A" ? el : el.querySelector("a");
+                    const href = a?.getAttribute("href") || "";
+                    const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
+                    h += '<a href="' + esc(fullHref) + '">' + esc(el.textContent || "") + "</a>";
+                  } else { h += walkTweet(el); }
                 }
-                return h;
               }
-              contentHtml = "<p>" + walkTweet(textEl) + "</p>";
-              const imgs = article?.querySelectorAll('img[src*="pbs.twimg.com"]') || [];
+              return h;
+            }
+
+            const threadParts = [];
+            for (const article of articles) {
+              // Get this article's handle
+              const links = article.querySelectorAll('a[role="link"]');
+              let articleHandle = "";
+              for (const link of links) {
+                const href = link.getAttribute("href") || "";
+                if (href.match(/^\/\w+$/)) { articleHandle = href.slice(1); break; }
+              }
+              // Stop at tweets from other authors (replies)
+              if (articleHandle && handle && articleHandle !== handle) break;
+
+              const textEl = article.querySelector('[data-testid="tweetText"]');
+              if (!textEl) continue;
+
+              let partHtml = "<p>" + walkTweet(textEl) + "</p>";
+              const imgs = article.querySelectorAll('img[src*="pbs.twimg.com"]') || [];
               for (const img of imgs) {
                 if (!img.src.includes("profile_images")) {
-                  contentHtml += '\n<img src="' + esc(cleanImgSrc(img.src)) + '" alt="Tweet media" />';
+                  partHtml += '\n<img src="' + esc(cleanImgSrc(img.src)) + '" alt="Tweet media" />';
                 }
               }
+              threadParts.push({ text: textEl.textContent?.trim() || "", html: partHtml });
             }
+
+            const text = threadParts.map(p => p.text).join("\n\n");
+            const contentHtml = threadParts.map(p => p.html).join("\n<hr>\n");
             return { title: "", text, contentHtml, handle, isArticle: false };
           },
         });

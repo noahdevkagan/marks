@@ -100,6 +100,11 @@
       }
     }
 
+    // Strip trailing suffixes like /analytics, /retweets from tweet URLs
+    if (tweetUrl) {
+      tweetUrl = tweetUrl.replace(/\/(analytics|retweets|quotes|likes|hidden|history)\/?$/, "");
+    }
+
     return { handle, tweetUrl };
   }
 
@@ -530,5 +535,417 @@
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // ========================================
+  // Bookmark Sync — bulk import old bookmarks
+  // ========================================
+
+  const SYNC_CONFIG = {
+    MAX_TWEETS: 500,
+    MAX_AGE_DAYS: 30,
+    MAX_CONSEC_DUPES: 5,
+    // Slower, more human-like pacing to avoid detection
+    SAVE_DELAY_MIN: 2000,
+    SAVE_DELAY_MAX: 5000,
+    SCROLL_DELAY_MIN: 4000,
+    SCROLL_DELAY_MAX: 10000,
+    BOTTOM_RETRY_DELAY: 6000,
+    // Take a longer break every N tweets
+    REST_EVERY: 15,
+    REST_DELAY_MIN: 8000,
+    REST_DELAY_MAX: 15000,
+  };
+
+  let syncState = null;
+
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  /** Random int between min and max (inclusive) */
+  function randBetween(min, max) {
+    return min + Math.random() * (max - min);
+  }
+
+  // --- Contextual sync button on bookmarks page ---
+  // Show a subtle "Import to Marks" button when user visits x.com/i/bookmarks
+
+  if (window.location.pathname === "/i/bookmarks") {
+    // Check if sync was requested (background tab opened by background.js)
+    chrome.runtime.sendMessage({ type: "bookmark-sync-check" }).then((res) => {
+      if (res?.shouldSync) {
+        // Auto-start in background tab — no button needed
+        setTimeout(() => startBookmarkSync(), 3000);
+      } else {
+        // User navigated here manually — show the import button
+        setTimeout(() => {
+          if (config?.token && !syncState?.running) showSyncButton();
+        }, 1500);
+      }
+    });
+  }
+
+  // Listen for messages from background
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === "start-bookmark-sync") startBookmarkSync();
+    if (msg.type === "stop-bookmark-sync") stopBookmarkSync();
+    if (msg.type === "bookmark-sync-notify") showToast(msg.message);
+  });
+
+  /** Show a subtle floating button on the bookmarks page */
+  function showSyncButton() {
+    if (document.getElementById("marks-sync-btn")) return;
+
+    const btn = document.createElement("button");
+    btn.id = "marks-sync-btn";
+    btn.textContent = "Import to Marks";
+    Object.assign(btn.style, {
+      position: "fixed",
+      bottom: "20px",
+      right: "20px",
+      padding: "8px 16px",
+      background: "#1a1a1a",
+      color: "#999",
+      border: "1px solid #333",
+      borderRadius: "8px",
+      fontSize: "12px",
+      fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+      cursor: "pointer",
+      zIndex: "999998",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+      transition: "color 0.15s, border-color 0.15s",
+    });
+    btn.addEventListener("mouseenter", () => {
+      btn.style.color = "#4d9fff";
+      btn.style.borderColor = "#4d9fff";
+    });
+    btn.addEventListener("mouseleave", () => {
+      btn.style.color = "#999";
+      btn.style.borderColor = "#333";
+    });
+    btn.addEventListener("click", () => {
+      btn.remove();
+      // Ask background to open a background tab for sync
+      chrome.runtime.sendMessage({ type: "bookmark-sync-start-bg" });
+      showToast("Syncing bookmarks in background...");
+    });
+
+    document.body.appendChild(btn);
+  }
+
+  function removeSyncButton() {
+    document.getElementById("marks-sync-btn")?.remove();
+  }
+
+  async function startBookmarkSync() {
+    if (syncState?.running) return;
+
+    if (window.location.pathname !== "/i/bookmarks") return;
+
+    removeSyncButton();
+
+    syncState = {
+      running: true,
+      paused: false,
+      found: 0,
+      saved: 0,
+      skipped: 0,
+      consecutiveDupes: 0,
+      stopReason: null,
+    };
+
+    // Only show the panel if this is the active/visible tab
+    if (document.visibilityState === "visible") {
+      showSyncPanel();
+    }
+    await syncScrollLoop();
+    chrome.runtime.sendMessage({
+      type: "bookmark-sync-complete",
+      saved: syncState.saved,
+      found: syncState.found,
+      reason: syncState.stopReason,
+    });
+  }
+
+  function stopBookmarkSync() {
+    if (syncState) {
+      syncState.running = false;
+      syncState.stopReason = "Stopped by user";
+    }
+  }
+
+  async function syncScrollLoop() {
+    const seenUrls = new Set();
+    let totalProcessed = 0;
+
+    while (syncState.running && !syncState.stopReason) {
+      // Pause support
+      while (syncState.paused && syncState.running) {
+        updateSyncPanel("Paused");
+        await sleep(500);
+      }
+      if (!syncState.running) break;
+
+      // Find all tweet articles currently in DOM
+      const articles = document.querySelectorAll("article");
+
+      for (const article of articles) {
+        if (!syncState.running || syncState.stopReason) break;
+        while (syncState.paused && syncState.running) await sleep(500);
+
+        // Expand "Show more" on truncated tweets before extracting
+        const showMoreBtn = [...article.querySelectorAll("span")].find(
+          (el) => el.textContent.trim().toLowerCase() === "show more",
+        );
+        if (showMoreBtn) {
+          const clickTarget = showMoreBtn.closest('[role="button"], a, button') || showMoreBtn;
+          clickTarget.click();
+          await sleep(800);
+        }
+
+        // Extract tweet data using existing function
+        const tweetData = extractTweetData(article);
+        if (!tweetData?.url) continue;
+        if (seenUrls.has(tweetData.url)) continue;
+        seenUrls.add(tweetData.url);
+
+        syncState.found++;
+        totalProcessed++;
+
+        // Check tweet age via <time> element
+        const timeEl = article.querySelector("time");
+        const datetime = timeEl?.getAttribute("datetime");
+        if (datetime) {
+          const ageDays = (Date.now() - new Date(datetime).getTime()) / 86400000;
+          if (ageDays > SYNC_CONFIG.MAX_AGE_DAYS) {
+            syncState.stopReason = `Reached ${SYNC_CONFIG.MAX_AGE_DAYS}-day limit`;
+            break;
+          }
+        }
+
+        // Save the tweet
+        updateSyncPanel("Saving...");
+        const tags = [...new Set([...tweetData.hashtags, "twitter"])];
+        try {
+          const result = await chrome.runtime.sendMessage({
+            type: "save-bookmark",
+            data: {
+              url: tweetData.url,
+              title: tweetData.title,
+              description: tweetData.text,
+              tags,
+              is_read: false,
+              type: "tweet",
+              skip_enrichment: true,
+              skipArchive: true,
+              type_metadata: {
+                author: tweetData.handle,
+                tweet_text: tweetData.text,
+                content_html: tweetData.contentHtml || "",
+                media_urls: tweetData.mediaUrls || [],
+                ...(tweetData.isXArticle && { x_article: true }),
+              },
+            },
+          });
+
+          if (result?.ok) {
+            const bk = result.bookmark;
+            const isNew = bk && (Date.now() - new Date(bk.created_at).getTime()) < 10000;
+            if (isNew) {
+              syncState.saved++;
+              syncState.consecutiveDupes = 0;
+            } else {
+              syncState.skipped++;
+              syncState.consecutiveDupes++;
+            }
+            // Update badge so user can see progress from any tab
+            chrome.runtime.sendMessage({
+              type: "bookmark-sync-progress",
+              saved: syncState.saved,
+              found: syncState.found,
+            });
+          }
+        } catch (err) {
+          console.error("[Marks] sync save error:", err);
+        }
+
+        // Check stop conditions
+        if (syncState.found >= SYNC_CONFIG.MAX_TWEETS) {
+          syncState.stopReason = `Reached ${SYNC_CONFIG.MAX_TWEETS}-tweet limit`;
+          break;
+        }
+        if (syncState.consecutiveDupes >= SYNC_CONFIG.MAX_CONSEC_DUPES) {
+          syncState.stopReason = "Caught up (already saved)";
+          break;
+        }
+
+        // Periodic rest break — longer pause every N tweets to look human
+        if (totalProcessed > 0 && totalProcessed % SYNC_CONFIG.REST_EVERY === 0) {
+          const restDelay = randBetween(SYNC_CONFIG.REST_DELAY_MIN, SYNC_CONFIG.REST_DELAY_MAX);
+          updateSyncPanel(`Resting ${Math.round(restDelay / 1000)}s...`);
+          await sleep(restDelay);
+        } else {
+          // Normal delay between saves
+          const saveDelay = randBetween(SYNC_CONFIG.SAVE_DELAY_MIN, SYNC_CONFIG.SAVE_DELAY_MAX);
+          updateSyncPanel(`Waiting ${(saveDelay / 1000).toFixed(1)}s...`);
+          await sleep(saveDelay);
+        }
+
+        updateSyncPanel();
+      }
+
+      if (syncState.stopReason) break;
+
+      // Scroll down to load more — vary the distance for natural feel
+      updateSyncPanel("Scrolling...");
+      const scrollAmount = window.innerHeight * (0.5 + Math.random() * 0.5);
+      window.scrollBy({ top: scrollAmount, behavior: "smooth" });
+
+      const scrollDelay = randBetween(SYNC_CONFIG.SCROLL_DELAY_MIN, SYNC_CONFIG.SCROLL_DELAY_MAX);
+      updateSyncPanel("Loading more tweets...");
+      await sleep(scrollDelay);
+
+      // Check if we hit the bottom (no new articles after scroll)
+      const newArticles = document.querySelectorAll("article");
+      let hasNew = false;
+      for (const a of newArticles) {
+        const { tweetUrl } = extractHandleAndUrl(a);
+        if (tweetUrl && !seenUrls.has(tweetUrl)) {
+          hasNew = true;
+          break;
+        }
+      }
+
+      if (!hasNew) {
+        // Retry once more
+        window.scrollBy({ top: window.innerHeight, behavior: "smooth" });
+        await sleep(SYNC_CONFIG.BOTTOM_RETRY_DELAY);
+
+        const retryArticles = document.querySelectorAll("article");
+        let retryHasNew = false;
+        for (const a of retryArticles) {
+          const { tweetUrl } = extractHandleAndUrl(a);
+          if (tweetUrl && !seenUrls.has(tweetUrl)) {
+            retryHasNew = true;
+            break;
+          }
+        }
+        if (!retryHasNew) {
+          syncState.stopReason = "Reached end of bookmarks";
+        }
+      }
+    }
+
+    // Done
+    syncState.running = false;
+    showSyncComplete();
+  }
+
+  // --- Sync progress panel ---
+
+  function showSyncPanel() {
+    removeSyncPanel();
+
+    const panel = document.createElement("div");
+    panel.id = "marks-sync-panel";
+    Object.assign(panel.style, {
+      position: "fixed",
+      bottom: "20px",
+      right: "20px",
+      width: "280px",
+      background: "#1a1a1a",
+      border: "1px solid #333",
+      borderRadius: "12px",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+      zIndex: "999999",
+      fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif",
+      fontSize: "13px",
+      color: "#e5e5e5",
+      padding: "16px",
+    });
+
+    panel.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <strong style="font-size:14px">Syncing Bookmarks</strong>
+        <span id="marks-sync-close" style="cursor:pointer;color:#999;font-size:18px">&times;</span>
+      </div>
+      <div style="color:#666;font-size:11px;margin-bottom:10px">
+        Importing last ${SYNC_CONFIG.MAX_AGE_DAYS} days of bookmarks
+      </div>
+      <div id="marks-sync-stats" style="margin-bottom:8px">
+        <div style="display:flex;gap:12px;margin-bottom:4px">
+          <span>Found: <strong id="marks-sync-found">0</strong></span>
+          <span>Saved: <strong id="marks-sync-saved" style="color:#4d9fff">0</strong></span>
+        </div>
+        <div style="color:#999;font-size:11px">
+          Already saved: <span id="marks-sync-skipped">0</span>
+        </div>
+      </div>
+      <div id="marks-sync-action" style="color:#666;font-size:11px;margin-bottom:12px">Starting...</div>
+      <div style="display:flex;gap:8px">
+        <button id="marks-sync-pause" style="flex:1;padding:6px;background:#2a2a2a;border:1px solid #444;border-radius:4px;color:#e5e5e5;cursor:pointer;font-size:12px;font-family:inherit">Pause</button>
+        <button id="marks-sync-stop" style="flex:1;padding:6px;background:#2a2a2a;border:1px solid #444;border-radius:4px;color:#ff5555;cursor:pointer;font-size:12px;font-family:inherit">Stop</button>
+      </div>
+    `;
+
+    document.body.appendChild(panel);
+
+    document.getElementById("marks-sync-close").addEventListener("click", () => {
+      stopBookmarkSync();
+      removeSyncPanel();
+    });
+    document.getElementById("marks-sync-pause").addEventListener("click", () => {
+      if (!syncState) return;
+      syncState.paused = !syncState.paused;
+      document.getElementById("marks-sync-pause").textContent =
+        syncState.paused ? "Resume" : "Pause";
+    });
+    document.getElementById("marks-sync-stop").addEventListener("click", () => {
+      stopBookmarkSync();
+    });
+  }
+
+  function updateSyncPanel(action) {
+    const found = document.getElementById("marks-sync-found");
+    const saved = document.getElementById("marks-sync-saved");
+    const skipped = document.getElementById("marks-sync-skipped");
+    const actionEl = document.getElementById("marks-sync-action");
+    if (!found || !syncState) return;
+
+    found.textContent = syncState.found;
+    saved.textContent = syncState.saved;
+    skipped.textContent = syncState.skipped;
+    if (action) actionEl.textContent = action;
+  }
+
+  function showSyncComplete() {
+    const actionEl = document.getElementById("marks-sync-action");
+    if (!actionEl || !syncState) return;
+
+    const reason = syncState.stopReason || "Complete";
+    actionEl.innerHTML = `<span style="color:#4d9fff">${escapeHtml(reason)}</span>`;
+
+    // Replace buttons with a "Done" button
+    const pauseBtn = document.getElementById("marks-sync-pause");
+    const stopBtn = document.getElementById("marks-sync-stop");
+    if (pauseBtn) pauseBtn.style.display = "none";
+    if (stopBtn) {
+      stopBtn.textContent = "Done";
+      stopBtn.style.color = "#e5e5e5";
+      stopBtn.onclick = () => removeSyncPanel();
+    }
+
+    // Update header
+    const panel = document.getElementById("marks-sync-panel");
+    const header = panel?.querySelector("strong");
+    if (header) header.textContent = "Sync Complete";
+
+    // Final stats update
+    updateSyncPanel();
+  }
+
+  function removeSyncPanel() {
+    document.getElementById("marks-sync-panel")?.remove();
   }
 })();

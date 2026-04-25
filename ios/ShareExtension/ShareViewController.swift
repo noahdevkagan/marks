@@ -4,17 +4,17 @@ import UniformTypeIdentifiers
 class ShareViewController: UIViewController {
 
     private let hudView = UIView()
-    private let checkLabel = UILabel()
+    private let iconLabel = UILabel()
     private let titleLabel = UILabel()
+    private var didComplete = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .clear
-        view.isOpaque = false
+        view.backgroundColor = UIColor.black.withAlphaComponent(0.3)
         setupHUD()
+        showHUD(saving: true)
         handleSharedURL()
 
-        // Timeout: if nothing happens within 5 seconds, close gracefully
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
             self?.close()
         }
@@ -23,7 +23,7 @@ class ShareViewController: UIViewController {
     // MARK: - HUD
 
     private func setupHUD() {
-        hudView.backgroundColor = UIColor.systemBackground
+        hudView.backgroundColor = .systemBackground
         hudView.layer.cornerRadius = 16
         hudView.layer.shadowColor = UIColor.black.cgColor
         hudView.layer.shadowOpacity = 0.15
@@ -33,19 +33,16 @@ class ShareViewController: UIViewController {
         hudView.alpha = 0
         hudView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
 
-        checkLabel.text = "\u{2713}"
-        checkLabel.font = .systemFont(ofSize: 36, weight: .semibold)
-        checkLabel.textColor = .systemGreen
-        checkLabel.textAlignment = .center
-        checkLabel.translatesAutoresizingMaskIntoConstraints = false
+        iconLabel.font = .systemFont(ofSize: 36, weight: .semibold)
+        iconLabel.textAlignment = .center
+        iconLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        titleLabel.text = "Saved to Marks"
         titleLabel.font = .systemFont(ofSize: 15, weight: .medium)
         titleLabel.textColor = .label
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        hudView.addSubview(checkLabel)
+        hudView.addSubview(iconLabel)
         hudView.addSubview(titleLabel)
         view.addSubview(hudView)
 
@@ -54,24 +51,35 @@ class ShareViewController: UIViewController {
             hudView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             hudView.widthAnchor.constraint(equalToConstant: 180),
             hudView.heightAnchor.constraint(equalToConstant: 140),
-
-            checkLabel.centerXAnchor.constraint(equalTo: hudView.centerXAnchor),
-            checkLabel.topAnchor.constraint(equalTo: hudView.topAnchor, constant: 28),
-
+            iconLabel.centerXAnchor.constraint(equalTo: hudView.centerXAnchor),
+            iconLabel.topAnchor.constraint(equalTo: hudView.topAnchor, constant: 28),
             titleLabel.centerXAnchor.constraint(equalTo: hudView.centerXAnchor),
-            titleLabel.topAnchor.constraint(equalTo: checkLabel.bottomAnchor, constant: 10),
+            titleLabel.topAnchor.constraint(equalTo: iconLabel.bottomAnchor, constant: 10),
         ])
     }
 
-    private func showHUD() {
+    private func showHUD(saving: Bool) {
+        if saving {
+            iconLabel.text = "\u{2026}"
+            iconLabel.textColor = .secondaryLabel
+            titleLabel.text = "Saving\u{2026}"
+        } else {
+            iconLabel.text = "\u{2713}"
+            iconLabel.textColor = .systemGreen
+            titleLabel.text = "Saved to Marks"
+        }
         UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
             self.hudView.alpha = 1
             self.hudView.transform = .identity
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+    }
+
+    private func dismissHUD() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
             UIView.animate(withDuration: 0.2, animations: {
                 self?.hudView.alpha = 0
                 self?.hudView.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+                self?.view.backgroundColor = .clear
             }) { _ in
                 self?.close()
             }
@@ -94,16 +102,12 @@ class ShareViewController: UIViewController {
                 if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
                     provider.loadItem(forTypeIdentifier: UTType.url.identifier) { [weak self] data, _ in
                         let urlString: String? = {
-                            if let url = data as? URL {
+                            if let url = data as? URL { return url.absoluteString }
+                            if let data = data as? Data,
+                               let url = URL(dataRepresentation: data, relativeTo: nil) {
                                 return url.absoluteString
                             }
-                            if let urlData = data as? Data,
-                               let url = URL(dataRepresentation: urlData, relativeTo: nil) {
-                                return url.absoluteString
-                            }
-                            if let text = data as? String, text.hasPrefix("http") {
-                                return text
-                            }
+                            if let text = data as? String, text.hasPrefix("http") { return text }
                             return nil
                         }()
                         guard let urlString else {
@@ -119,8 +123,7 @@ class ShareViewController: UIViewController {
 
                 if provider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
                     provider.loadItem(forTypeIdentifier: UTType.plainText.identifier) { [weak self] data, _ in
-                        guard let text = data as? String,
-                              text.hasPrefix("http") else {
+                        guard let text = data as? String, text.hasPrefix("http") else {
                             Task { @MainActor in self?.close() }
                             return
                         }
@@ -144,12 +147,15 @@ class ShareViewController: UIViewController {
         var queue = defaults?.array(forKey: "pendingBookmarks") as? [[String: String]] ?? []
         queue.append(["url": url, "title": title])
         defaults?.set(queue, forKey: "pendingBookmarks")
-        showHUD()
+        showHUD(saving: false)
+        dismissHUD()
     }
 
     // MARK: - Close
 
     private func close() {
+        guard !didComplete else { return }
+        didComplete = true
         extensionContext?.completeRequest(returningItems: nil)
     }
 }

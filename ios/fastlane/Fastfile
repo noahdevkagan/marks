@@ -49,7 +49,7 @@ platform :ios do
   desc "Build and upload to TestFlight"
   lane :beta do
     setup_ci if ENV["CI"]
-    authenticate_app_store_connect
+    api_key = authenticate_app_store_connect
 
     # Auto-increment build number
     build = (get_pbxproj_value("CURRENT_PROJECT_VERSION") || "0").to_i + 1
@@ -62,13 +62,14 @@ platform :ios do
       export_method: "app-store",
       clean: true
     )
-    upload_to_testflight(skip_waiting_for_build_processing: true)
+    upload_to_testflight(api_key: api_key, skip_waiting_for_build_processing: true)
   end
 
   desc "Upload only — re-uses the existing Marks.ipa (no rebuild)"
   lane :upload_only do
-    authenticate_app_store_connect
+    api_key = authenticate_app_store_connect
     upload_to_testflight(
+      api_key: api_key,
       ipa: "Marks.ipa",
       skip_waiting_for_build_processing: true
     )
@@ -76,8 +77,9 @@ platform :ios do
 
   desc "Upload metadata and screenshots to App Store"
   lane :release do
-    authenticate_app_store_connect
+    api_key = authenticate_app_store_connect
     deliver(
+      api_key: api_key,
       skip_binary_upload: true,
       force: true
     )
@@ -86,7 +88,7 @@ platform :ios do
   desc "Full release: build, upload binary + metadata"
   lane :ship do
     setup_ci if ENV["CI"]
-    authenticate_app_store_connect
+    api_key = authenticate_app_store_connect
 
     build = (get_pbxproj_value("CURRENT_PROJECT_VERSION") || "0").to_i + 1
     set_pbxproj_value("CURRENT_PROJECT_VERSION", build)
@@ -98,7 +100,17 @@ platform :ios do
       export_method: "app-store",
       clean: true
     )
-    deliver(force: true)
+    deliver(api_key: api_key, force: true)
+  end
+
+  desc "Upload existing Marks.ipa to App Store + push metadata (no rebuild)"
+  lane :ship_upload_only do
+    api_key = authenticate_app_store_connect
+    deliver(
+      api_key: api_key,
+      ipa: "Marks.ipa",
+      force: true
+    )
   end
 
   desc "Bump version number (e.g. fastlane bump version:1.4.1)"

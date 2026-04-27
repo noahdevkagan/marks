@@ -1,4 +1,8 @@
-Marks is a private bookmark tracker that keeps your saved articles, tweets, PDFs, and links organized and readable.
+The fastest way to save articles, tweets, PDFs, and links — then actually read them later.
+
+No ads. No tracking. No social feed. Just your bookmarks, beautifully organized and synced across iPhone, iPad, Mac, and web.
+
+★ Why people switch from Pocket and Instapaper:
 
 SAVE FROM ANYWHERE
 Use the share extension to save any link from Safari, Chrome, or any app. Marks automatically detects the content type — articles, tweets, videos, PDFs, and more.
@@ -10,7 +14,7 @@ ORGANIZE WITH TAGS
 Tag your bookmarks to find them later. Filter by tag, search across titles and URLs, and keep your collection tidy.
 
 SYNC ACROSS DEVICES
-Your bookmarks sync securely via Supabase. Access your full collection from your iPhone and the web.
+Your bookmarks sync securely. Access your full collection from your iPhone, iPad, Mac, and the web.
 
 OFFLINE ACCESS
 Saved content is cached locally so you can read even without a connection.

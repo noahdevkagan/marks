@@ -1,1 +1,1 @@
-bookmarks,read later,articles,save links,reader,offline,tags,organize,private,PDF
+pocket,instapaper,raindrop,reader,clip,saver,offline,reading,list,article,web,clipper,tweet,note

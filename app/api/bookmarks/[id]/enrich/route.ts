@@ -16,13 +16,16 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Params) {
   try {
-    await requireUser();
+    const user = await requireUser();
     const { id: idStr } = await params;
     const id = parseInt(idStr, 10);
 
     const bookmark = await getBookmark(id);
     if (!bookmark) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (bookmark.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Get user's existing tags for vocabulary matching

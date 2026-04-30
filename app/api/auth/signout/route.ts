@@ -7,5 +7,15 @@ export async function POST(req: NextRequest) {
 
   const url = req.nextUrl.clone();
   url.pathname = "/login";
-  return NextResponse.redirect(url);
+  const response = NextResponse.redirect(url);
+
+  // Belt-and-suspenders: explicitly clear any Supabase auth cookies on the response,
+  // so the redirected request to /login carries no stale session.
+  for (const cookie of req.cookies.getAll()) {
+    if (cookie.name.startsWith("sb-")) {
+      response.cookies.delete(cookie.name);
+    }
+  }
+
+  return response;
 }

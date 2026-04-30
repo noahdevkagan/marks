@@ -34,6 +34,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (!bookmark) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    if (bookmark.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await req.json().catch(() => ({}));
     const forceArchive = body.force_archive === true;
@@ -481,9 +484,17 @@ export async function POST(req: NextRequest, { params }: Params) {
 /** Re-process archived PDF content through the improved textToHtml formatter */
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
-    await requireUser();
+    const user = await requireUser();
     const { id: idStr } = await params;
     const id = parseInt(idStr, 10);
+
+    const bookmark = await getBookmark(id);
+    if (!bookmark) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (bookmark.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const supabase = await createClient();
     const { data: archived } = await supabase

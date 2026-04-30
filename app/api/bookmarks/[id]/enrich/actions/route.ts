@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
+import { getBookmark } from "@/lib/db";
 import { createClient } from "@/lib/supabase-server";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PUT(req: NextRequest, { params }: Params) {
   try {
-    await requireUser();
+    const user = await requireUser();
     const { id: idStr } = await params;
     const id = parseInt(idStr, 10);
+
+    const bookmark = await getBookmark(id);
+    if (!bookmark) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (bookmark.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { index, completed } = await req.json();
 
     const supabase = await createClient();

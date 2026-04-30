@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/auth";
 
-// GET /api/site-stats — public aggregate stats for the product
+// GET /api/site-stats — admin-only aggregate stats (gated by ADMIN_EMAILS)
 export async function GET() {
   try {
+    try {
+      await requireAdmin();
+    } catch (err) {
+      const status = err instanceof Error && err.message === "Forbidden" ? 403 : 401;
+      return NextResponse.json({ error: status === 403 ? "Forbidden" : "Unauthorized" }, { status });
+    }
+
     const supabase = createAdminClient();
 
     // Total bookmarks saved

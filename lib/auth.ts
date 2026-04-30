@@ -30,3 +30,21 @@ export async function requireUser() {
   if (!user) throw new Error("Unauthorized");
   return user;
 }
+
+function adminEmails(): string[] {
+  return (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return adminEmails().includes(email.toLowerCase());
+}
+
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (!isAdminEmail(user.email)) throw new Error("Forbidden");
+  return user;
+}

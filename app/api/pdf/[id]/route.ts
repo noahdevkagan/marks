@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
+import { getBookmark } from "@/lib/db";
 import { createClient } from "@/lib/supabase-server";
 import { getSignedUrl } from "@/lib/storage";
 
@@ -11,9 +12,16 @@ export async function GET(req: NextRequest, { params }: Params) {
     const { id: idStr } = await params;
     const id = parseInt(idStr, 10);
 
+    const bookmark = await getBookmark(id);
+    if (!bookmark) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (bookmark.user_id !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const supabase = await createClient();
 
-    // Try stored_media lookup first
     const { data: media } = await supabase
       .from("stored_media")
       .select("storage_path")
@@ -21,11 +29,9 @@ export async function GET(req: NextRequest, { params }: Params) {
       .eq("media_type", "pdf_upload")
       .single();
 
-    let storagePath = media?.storage_path;
-
-    // Fallback: construct expected path directly
+    const storagePath = media?.storage_path;
     if (!storagePath) {
-      storagePath = `${user.id}/${id}/document.pdf`;
+      return NextResponse.json({ error: "PDF not found" }, { status: 404 });
     }
 
     const signedUrl = await getSignedUrl(storagePath);

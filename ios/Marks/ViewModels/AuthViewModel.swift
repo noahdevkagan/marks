@@ -14,10 +14,25 @@ final class AuthViewModel: ObservableObject {
     }
 
     func checkSession() async {
-        isLoading = true
-        let user = await supabase.currentUser
-        isSignedIn = user != nil
+        // Optimistic: if we have credentials on disk, treat the user as
+        // signed in immediately. Validate against the server in the
+        // background, and only flip to signed-out on a confirmed rejection.
+        // This prevents transient network/server errors at launch from
+        // looking like "the app forgot my login".
+        isSignedIn = supabase.hasStoredTokens
         isLoading = false
+
+        guard isSignedIn else { return }
+
+        switch await supabase.validateSession() {
+        case .valid:
+            isSignedIn = true
+        case .invalid:
+            isSignedIn = false
+        case .unreachable:
+            // Keep optimistic state; we'll re-validate next time.
+            break
+        }
     }
 
     func signIn(email: String, password: String) async {

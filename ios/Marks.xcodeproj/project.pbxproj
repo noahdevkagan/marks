@@ -13,6 +13,7 @@
 		1B8DD8E22F23926C6AD0C528 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ADB458135E15A1CBC1C482E /* LoginView.swift */; };
 		27A7B2CA5A40F194D460BCAC /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD5B471A80BF13CDF45BE55 /* ShareViewController.swift */; };
 		325961D4AE8D9FA23AD348AE /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DC7AA68F56EC40814F8BA56 /* SupabaseService.swift */; };
+		KEY0001000100010001000100 /* KeychainTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = KEY0002000200020002000200 /* KeychainTokenStore.swift */; };
 		368D39B37ED6C618C438EAC1 /* BookmarkDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E19EBF2FDD067AE6C9BFEAF6 /* BookmarkDetailView.swift */; };
 		37459CEC7DAE3EDB590EC8B1 /* CachedContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10692E871F2BC2363811C8A3 /* CachedContent.swift */; };
 		3815FEE7B47809AA5A61CB32 /* Date+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63E088FDEC94A26DD9F21624 /* Date+Extensions.swift */; };
@@ -70,6 +71,7 @@
 
 /* Begin PBXFileReference section */
 		0DC7AA68F56EC40814F8BA56 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
+		KEY0002000200020002000200 /* KeychainTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainTokenStore.swift; sourceTree = "<group>"; };
 		10692E871F2BC2363811C8A3 /* CachedContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedContent.swift; sourceTree = "<group>"; };
 		184CD762FDF83356F9ED3EBE /* Tag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tag.swift; sourceTree = "<group>"; };
 		1D23C5BE2450088B88494EEA /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
@@ -109,6 +111,7 @@
 				0DC7AA68F56EC40814F8BA56 /* SupabaseService.swift */,
 				50218D751C3F1DB2559A7099 /* SyncEngine.swift */,
 				6B3C226508158FF466CD0C45 /* OfflineStorage.swift */,
+				KEY0002000200020002000200 /* KeychainTokenStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -340,6 +343,7 @@
 				B6811235201F0201BCDFA42C /* Tag.swift in Sources */,
 				37459CEC7DAE3EDB590EC8B1 /* CachedContent.swift in Sources */,
 				325961D4AE8D9FA23AD348AE /* SupabaseService.swift in Sources */,
+				KEY0001000100010001000100 /* KeychainTokenStore.swift in Sources */,
 				FB1D29B658990E7CF6D52696 /* SyncEngine.swift in Sources */,
 				0054D431092652477AF9DF93 /* AuthViewModel.swift in Sources */,
 				D59DEE8B3D118F2A899DDFF4 /* BookmarkListViewModel.swift in Sources */,

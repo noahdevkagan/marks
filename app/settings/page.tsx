@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { createClient } from "@/lib/supabase-browser";
 
 type StorageInfo = {
   bytes_used: number;
@@ -118,17 +119,49 @@ export default function SettingsPage() {
       return;
     }
 
+    const MAX_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      setUploadError("File too large (50 MB max)");
+      return;
+    }
+
     setUploading(true);
     setUploadResult(null);
     setUploadError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setUploadError("Not signed in");
+        return;
+      }
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, "_");
+      const storagePath = `${user.id}/pdf-uploads/${Date.now()}-${safeName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("user-files")
+        .upload(storagePath, file, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        setUploadError(uploadError.message || "Upload failed");
+        return;
+      }
 
       const res = await fetch("/api/upload-pdf", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storagePath,
+          filename: file.name,
+          fileSize: file.size,
+        }),
       });
 
       const data = await res.json();

@@ -21,9 +21,29 @@ final class SupabaseService {
     private var accessToken: String?
     private var refreshToken: String?
 
+    /// True when we have credentials on disk. Use this for fast, network-free
+    /// "is the user logged in?" checks; it is the inverse of "we know the
+    /// session is invalid" — the server may still reject the token on next call.
+    var hasStoredTokens: Bool { accessToken != nil && refreshToken != nil }
+
     private init() {
-        accessToken = UserDefaults.standard.string(forKey: "supabase_access_token")
-        refreshToken = UserDefaults.standard.string(forKey: "supabase_refresh_token")
+        // One-time migration: tokens used to live in UserDefaults.standard,
+        // which is the wrong place for auth secrets. Move any existing tokens
+        // into the Keychain and wipe the old copies.
+        let defaults = UserDefaults.standard
+        if let legacyAccess = defaults.string(forKey: KeychainTokenStore.accessKey),
+           KeychainTokenStore.accessToken == nil {
+            KeychainTokenStore.accessToken = legacyAccess
+        }
+        if let legacyRefresh = defaults.string(forKey: KeychainTokenStore.refreshKey),
+           KeychainTokenStore.refreshToken == nil {
+            KeychainTokenStore.refreshToken = legacyRefresh
+        }
+        defaults.removeObject(forKey: KeychainTokenStore.accessKey)
+        defaults.removeObject(forKey: KeychainTokenStore.refreshKey)
+
+        accessToken = KeychainTokenStore.accessToken
+        refreshToken = KeychainTokenStore.refreshToken
     }
 
     // MARK: — HTTP helpers
@@ -96,17 +116,65 @@ final class SupabaseService {
         req.httpBody = body
 
         let (data, response) = try await URLSession.shared.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+        guard let http = response as? HTTPURLResponse else {
+            // Couldn't even reach the server — keep tokens, surface as transient.
+            throw SupabaseError.unknown
+        }
+
+        if (200..<300).contains(http.statusCode) {
+            let auth = try decoder.decode(AuthResponse.self, from: data)
+            saveTokens(access: auth.access_token, refresh: auth.refresh_token)
+            // After refreshing, force a full re-sync so we get all data fresh
+            UserDefaults.standard.removeObject(forKey: "lastSyncDate")
+            return true
+        }
+
+        // Only clear tokens when the server actively rejects the refresh
+        // token (401/403/400 with an oauth-style error). Anything else
+        // (5xx, 429, gateway timeouts) is transient — keep the tokens and
+        // throw so the caller can retry on next launch.
+        if http.statusCode == 401 || http.statusCode == 403 || http.statusCode == 400 {
             clearTokens()
             return false
         }
 
-        let auth = try decoder.decode(AuthResponse.self, from: data)
-        saveTokens(access: auth.access_token, refresh: auth.refresh_token)
+        let msg = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+        throw SupabaseError.api(msg)
+    }
 
-        // After refreshing, force a full re-sync so we get all data fresh
-        UserDefaults.standard.removeObject(forKey: "lastSyncDate")
-        return true
+    // MARK: — Session validation
+
+    enum SessionValidation {
+        /// Server confirmed the access token is valid.
+        case valid(AuthUser)
+        /// Server confirmed credentials are no longer valid (refresh rejected).
+        /// Tokens have been cleared.
+        case invalid
+        /// We couldn't determine — network down, server error, etc.
+        /// Tokens are still on disk; treat the user as still signed-in.
+        case unreachable
+    }
+
+    /// Validate the stored session against the server.
+    ///
+    /// Unlike `currentUser`, this distinguishes "the server told us we're
+    /// logged out" from "we couldn't reach the server", so callers don't
+    /// flip a user to signed-out on a transient failure.
+    func validateSession() async -> SessionValidation {
+        guard accessToken != nil else { return .invalid }
+        do {
+            let data = try await request("/auth/v1/user")
+            let user = try decoder.decode(AuthUser.self, from: data)
+            return .valid(user)
+        } catch {
+            // refreshSession() clears tokens on a confirmed auth rejection.
+            // If they're gone, the server told us we're out. Otherwise the
+            // failure is transient (network, decode, 5xx, etc.).
+            if accessToken == nil {
+                return .invalid
+            }
+            return .unreachable
+        }
     }
 
     // MARK: — Auth
@@ -177,15 +245,14 @@ final class SupabaseService {
     private func saveTokens(access: String, refresh: String) {
         accessToken = access
         refreshToken = refresh
-        UserDefaults.standard.set(access, forKey: "supabase_access_token")
-        UserDefaults.standard.set(refresh, forKey: "supabase_refresh_token")
+        KeychainTokenStore.accessToken = access
+        KeychainTokenStore.refreshToken = refresh
     }
 
     private func clearTokens() {
         accessToken = nil
         refreshToken = nil
-        UserDefaults.standard.removeObject(forKey: "supabase_access_token")
-        UserDefaults.standard.removeObject(forKey: "supabase_refresh_token")
+        KeychainTokenStore.clear()
     }
 
     // MARK: — Bookmarks

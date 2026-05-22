@@ -21,6 +21,7 @@ export function ShareButton({
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -30,15 +31,22 @@ export function ShareButton({
 
   async function togglePublic(next: boolean) {
     setLoading(true);
+    setError("");
     try {
       if (next) {
         const res = await fetch(`/api/bookmarks/${bookmarkId}/share`, {
           method: "POST",
         });
-        if (res.ok) {
-          const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.slug) {
           setSlug(data.slug);
           setIsPublic(true);
+        } else {
+          setError(
+            data.error
+              ? `${data.error} (run supabase-migration-share.sql?)`
+              : `Couldn't share (HTTP ${res.status}). Did you run the migration?`,
+          );
         }
       } else {
         const res = await fetch(`/api/bookmarks/${bookmarkId}/share`, {
@@ -46,10 +54,23 @@ export function ShareButton({
         });
         if (res.ok) {
           setIsPublic(false);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setError(data.error ?? `Couldn't unshare (HTTP ${res.status})`);
         }
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Default-on: when modal opens and not already public, enable immediately
+  async function openModal() {
+    setOpen(true);
+    if (!isPublic) {
+      await togglePublic(true);
     }
   }
 
@@ -98,7 +119,7 @@ export function ShareButton({
       <button
         type="button"
         className="reader-action-btn share-trigger"
-        onClick={() => setOpen(true)}
+        onClick={openModal}
       >
         share
       </button>
@@ -126,6 +147,10 @@ export function ShareButton({
             <p className="share-modal-sub">
               Anyone with the link can read it — they don&rsquo;t need a Marks account.
             </p>
+
+            {error && (
+              <div className="share-error">{error}</div>
+            )}
 
             <div className="share-toggle-row">
               <div>

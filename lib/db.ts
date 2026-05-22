@@ -13,6 +13,10 @@ export type Bookmark = {
   type: string;
   type_metadata: Record<string, unknown>;
   tags?: string[];
+  share_slug?: string | null;
+  is_public?: boolean;
+  shared_at?: string | null;
+  owner_display?: string | null;
 };
 
 export type BookmarkWithTags = Bookmark & { tags: string[] };
@@ -266,6 +270,119 @@ export async function getAllTags(): Promise<{ name: string; count: number }[]> {
     name: row.name,
     count: Number(row.count),
   }));
+}
+
+// --- Public sharing ---
+
+const SLUG_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
+
+function randomSuffix(len = 6): string {
+  let out = "";
+  for (let i = 0; i < len; i++) {
+    out += SLUG_ALPHABET[Math.floor(Math.random() * SLUG_ALPHABET.length)];
+  }
+  return out;
+}
+
+function slugifyTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 60)
+    .replace(/-+$/g, "");
+}
+
+export async function generateShareSlug(title: string): Promise<string> {
+  const supabase = await createClient();
+  const base = slugifyTitle(title) || "shared";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = `${base}-${randomSuffix()}`;
+    const { data } = await supabase
+      .from("bookmarks")
+      .select("id")
+      .eq("share_slug", candidate)
+      .maybeSingle();
+    if (!data) return candidate;
+  }
+  // Extremely unlikely fallback
+  return `${base}-${randomSuffix(10)}`;
+}
+
+export async function setBookmarkPublic(
+  id: number,
+  ownerDisplay: string | null,
+): Promise<{ slug: string } | null> {
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("bookmarks")
+    .select("share_slug, title")
+    .eq("id", id)
+    .single();
+  if (!existing) return null;
+
+  const slug = existing.share_slug ?? (await generateShareSlug(existing.title));
+
+  const { error } = await supabase
+    .from("bookmarks")
+    .update({
+      is_public: true,
+      share_slug: slug,
+      shared_at: new Date().toISOString(),
+      owner_display: ownerDisplay,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) return null;
+  return { slug };
+}
+
+export async function setBookmarkPrivate(id: number): Promise<boolean> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bookmarks")
+    .update({ is_public: false, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  return !error;
+}
+
+export type PublicBookmark = BookmarkWithTags & {
+  archived: {
+    content_html: string | null;
+    content_text: string | null;
+    excerpt: string | null;
+    byline: string | null;
+    word_count: number | null;
+    source: string | null;
+  } | null;
+};
+
+/** Fetch a publicly-shared bookmark by slug. Uses anon client so it works for logged-out users. */
+export async function getPublicBookmarkBySlug(
+  slug: string,
+): Promise<PublicBookmark | null> {
+  const supabase = await createClient();
+
+  const { data: bookmark } = await supabase
+    .from("bookmarks")
+    .select("*")
+    .eq("share_slug", slug)
+    .eq("is_public", true)
+    .maybeSingle();
+
+  if (!bookmark) return null;
+
+  const { data: archived } = await supabase
+    .from("archived_content")
+    .select("content_html, content_text, excerpt, byline, word_count, source")
+    .eq("bookmark_id", bookmark.id)
+    .maybeSingle();
+
+  const [withTags] = await attachTags([bookmark]);
+  return { ...withTags, archived: archived ?? null };
 }
 
 export async function getLibraryStats(): Promise<{

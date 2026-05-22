@@ -3044,3 +3044,322 @@ header nav .nav-add {
   .lib-empty { background: #1a1a1a; border-color: #333; color: #666; }
   .lib-main .bookmarklet-section { border-top-color: rgba(255, 255, 255, 0.06); color: #666; }
 }
+
+/* ---------- Share modal (reader) ---------- */
+.share-trigger { color: var(--accent); }
+
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: share-fade 0.15s ease-out;
+}
+@keyframes share-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.share-modal {
+  background: var(--bg-surface);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+}
+.share-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+.share-modal-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+.share-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+.share-modal-close:hover { color: var(--text); }
+.share-modal-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 1.25rem;
+}
+.share-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+.share-toggle-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.share-toggle-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+.share-switch {
+  width: 40px;
+  height: 22px;
+  background: #ccc;
+  border: 0;
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.share-switch:disabled { opacity: 0.5; cursor: wait; }
+.share-switch::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: left 0.2s;
+}
+.share-switch.on { background: var(--accent); }
+.share-switch.on::after { left: 21px; }
+.share-link-box {
+  display: flex;
+  align-items: center;
+  background: var(--tag-bg);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem 0.55rem 0.85rem;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+.share-link-text {
+  flex: 1;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.share-copy-btn {
+  background: var(--text);
+  color: var(--bg-surface);
+  border: 0;
+  padding: 0.4rem 0.75rem;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.share-copy-btn:hover { opacity: 0.85; }
+.share-targets {
+  display: flex;
+  gap: 0.5rem;
+}
+.share-target {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.65rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  background: var(--bg-surface);
+  color: var(--text);
+  text-decoration: none;
+  font-family: inherit;
+}
+.share-target:hover {
+  background: var(--tag-bg);
+  text-decoration: none;
+  color: var(--text);
+}
+.share-target-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.share-stop-link {
+  margin-top: 1rem;
+  background: none;
+  border: 0;
+  color: var(--danger);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+.share-stop-link:hover { text-decoration: underline; }
+.share-stop-link:disabled { opacity: 0.5; cursor: wait; }
+
+/* ---------- Public share page ---------- */
+.public-share-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.public-share-wrapper ~ .mobile-bottom-nav,
+body:has(.public-share-wrapper) .mobile-bottom-nav {
+  display: none;
+}
+.public-share-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+.public-share-logo {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.public-share-logo:hover { text-decoration: none; color: var(--text); }
+.public-share-signup-link {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.public-share-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1.5rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  gap: 1rem;
+}
+.public-share-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+}
+.public-share-banner-left strong { color: var(--text); font-weight: 600; }
+.public-share-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #4d9fff);
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.public-share-original {
+  font-size: 0.85rem;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.public-share-article {
+  flex: 1;
+  padding-bottom: 8rem;
+}
+.public-share-cta {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--text);
+  color: var(--bg-surface);
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 20;
+}
+.public-share-cta-text {
+  display: flex;
+  flex-direction: column;
+}
+.public-share-cta-text strong {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.public-share-cta-text span {
+  font-size: 0.78rem;
+  opacity: 0.7;
+  margin-top: 0.15rem;
+}
+.public-share-cta-btn {
+  background: var(--bg-surface);
+  color: var(--text);
+  padding: 0.6rem 1.1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.public-share-cta-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+  text-decoration: none;
+}
+@media (max-width: 520px) {
+  .public-share-cta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+    text-align: center;
+  }
+  .public-share-cta-btn { text-align: center; }
+  .public-share-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+}
+
+/* ---------- Signup save banner ---------- */
+.signup-save-banner {
+  background: #fff7e0;
+  border: 1px solid #e6cc66;
+  color: #8a6d00;
+  padding: 0.7rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.4;
+}
+.signup-save-banner strong { color: #5a4500; }
+@media (prefers-color-scheme: dark) {
+  .signup-save-banner {
+    background: #2a2410;
+    border-color: #5a4a1f;
+    color: #e6cc66;
+  }
+  .signup-save-banner strong { color: #ffe09a; }
+}

@@ -11,6 +11,7 @@ import { ReaderMarkReadButton } from "./mark-read-button";
 import { PdfViewer } from "./pdf-viewer";
 import { ReadingProgress } from "./reading-progress";
 import { ReadingTracker } from "./reading-tracker";
+import { ShareButton } from "./share-button";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -190,6 +191,12 @@ export default async function ReaderPage({ params }: Props) {
             bookmarkUrl={bookmark.url}
             isArchived={!!archived}
             source={archived?.source}
+          />
+          <ShareButton
+            bookmarkId={id}
+            initialIsPublic={!!bookmark.is_public}
+            initialSlug={bookmark.share_slug ?? null}
+            bookmarkTitle={displayTitle}
           />
           <ReaderMarkReadButton bookmarkId={id} isRead={bookmark.is_read} />
         </div>

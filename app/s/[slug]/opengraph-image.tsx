@@ -66,7 +66,6 @@ export default async function OgImage({ params }: Props) {
     }
   }
 
-  // Try to find an article image: archived inline image first (cheap), then live og:image
   let articleImage: string | null = firstImageFromHtml(
     bookmark?.archived?.content_html,
   );
@@ -74,12 +73,10 @@ export default async function OgImage({ params }: Props) {
     articleImage = await fetchArticleImage(bookmark.url);
   }
 
-  // Shrink title size for long headlines
   const titleLen = title.length;
   const titleSize = titleLen > 140 ? 48 : titleLen > 90 ? 58 : titleLen > 50 ? 70 : 84;
   const displayTitle = title.length > 220 ? title.slice(0, 217) + "…" : title;
 
-  // With hero image: dark overlay + white title near the bottom
   if (articleImage) {
     return new ImageResponse(
       (
@@ -108,7 +105,6 @@ export default async function OgImage({ params }: Props) {
               objectFit: "cover",
             }}
           />
-          {/* Dark gradient overlay so text stays readable */}
           <div
             style={{
               position: "absolute",
@@ -118,7 +114,6 @@ export default async function OgImage({ params }: Props) {
               display: "flex",
             }}
           />
-          {/* Top bar: domain pill */}
           <div
             style={{
               position: "absolute",
@@ -139,7 +134,6 @@ export default async function OgImage({ params }: Props) {
             {domain || "shared"}
           </div>
 
-          {/* Title + attribution stacked at the bottom */}
           <div
             style={{
               position: "absolute",
@@ -215,7 +209,6 @@ export default async function OgImage({ params }: Props) {
     );
   }
 
-  // No article image — fall back to a clean text card (still article-focused, Marks is footer)
   return new ImageResponse(
     (
       <div

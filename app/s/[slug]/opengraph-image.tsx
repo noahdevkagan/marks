@@ -108,15 +108,6 @@ export default async function OgImage({ params }: Props) {
           <div
             style={{
               position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.9) 100%)",
-              display: "flex",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
               top: 50,
               left: 60,
               display: "flex",
@@ -137,71 +128,22 @@ export default async function OgImage({ params }: Props) {
           <div
             style={{
               position: "absolute",
-              bottom: 50,
-              left: 60,
+              top: 50,
               right: 60,
               display: "flex",
-              flexDirection: "column",
-              gap: 24,
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(0,0,0,0.55)",
+              padding: "10px 18px",
+              borderRadius: 999,
+              fontSize: 22,
+              fontWeight: 600,
               color: "white",
+              letterSpacing: "0.02em",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                fontFamily: "Georgia, serif",
-                fontSize: titleSize,
-                fontWeight: 700,
-                lineHeight: 1.08,
-                letterSpacing: "-0.02em",
-                textShadow: "0 2px 24px rgba(0,0,0,0.4)",
-              }}
-            >
-              {displayTitle}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                fontSize: 24,
-                color: "rgba(255,255,255,0.92)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    background: "linear-gradient(135deg, #4d9fff, #0066cc)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 20,
-                    fontWeight: 700,
-                    color: "white",
-                  }}
-                >
-                  {owner.charAt(0).toUpperCase()}
-                </div>
-                <span>
-                  Shared by <b>{owner}</b>
-                </span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 22,
-                  opacity: 0.85,
-                }}
-              >
-                <span>📑</span>
-                <span>Saved on Marks</span>
-              </div>
-            </div>
+            <span>📑</span>
+            <span>Saved on Marks</span>
           </div>
         </div>
       ),

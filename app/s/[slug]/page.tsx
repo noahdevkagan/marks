@@ -1,9 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getPublicBookmarkBySlug } from "@/lib/db";
 
 type Props = { params: Promise<{ slug: string }> };
+
+async function getBaseUrl(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  if (host) return `${proto}://${host}`;
+  return "https://getmarks.app";
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -17,9 +26,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     bookmark.archived?.excerpt ||
     bookmark.description ||
     `${owner} shared this article on Marks`;
-  const url = `https://getmarks.app/s/${slug}`;
+  const base = await getBaseUrl();
+  const url = `${base}/s/${slug}`;
+  const ogImage = `${base}/s/${slug}/opengraph-image`;
 
   return {
+    metadataBase: new URL(base),
     title: `${title} — shared on Marks`,
     description,
     openGraph: {
@@ -28,11 +40,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url,
       siteName: "Marks",
       type: "article",
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [ogImage],
     },
   };
 }

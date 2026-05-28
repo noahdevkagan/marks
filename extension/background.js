@@ -156,24 +156,43 @@ function extractTweetContentFromPage() {
     return { text: bodyText, contentHtml, title: articleTitle, handle, isArticle: true, mediaUrls };
   }
 
-  // Regular tweet
-  const article = document.querySelector("article");
-  if (!article) return null;
-  const textEl = article.querySelector('[data-testid="tweetText"]');
-  const text = textEl?.textContent?.trim() || "";
-  const handle = getHandle(article);
+  // Regular tweet — also capture thread (multiple articles from same author)
+  const articles = document.querySelectorAll("article");
+  if (articles.length === 0) return null;
 
-  let contentHtml = "";
-  if (textEl) {
-    contentHtml = extractTweetTextHtml(textEl);
-    // Append media images
+  const firstArticle = articles[0];
+  const handle = getHandle(firstArticle);
+
+  // Collect all thread tweets from the same author
+  // On a tweet detail page, thread tweets appear as consecutive articles
+  // before the main tweet, all from the same handle
+  const threadParts = [];
+  for (const article of articles) {
+    const articleHandle = getHandle(article);
+    // Stop at tweets from other authors (replies)
+    if (articleHandle && handle && articleHandle !== handle) break;
+
+    const textEl = article.querySelector('[data-testid="tweetText"]');
+    if (!textEl) continue;
+
+    let partHtml = extractTweetTextHtml(textEl);
+    // Append media images for this tweet
     const imgs = article.querySelectorAll('img[src*="pbs.twimg.com"]');
     for (const img of imgs) {
       if (!img.src.includes("profile_images")) {
-        contentHtml += '\n<img src="' + esc(cleanImgSrc(img.src)) + '" alt="Tweet media" />';
+        partHtml += '\n<img src="' + esc(cleanImgSrc(img.src)) + '" alt="Tweet media" />';
       }
     }
+    threadParts.push({
+      text: textEl.textContent?.trim() || "",
+      html: partHtml,
+    });
   }
+
+  if (threadParts.length === 0) return null;
+
+  const text = threadParts.map(p => p.text).join("\n\n");
+  const contentHtml = threadParts.map(p => p.html).join("\n<hr>\n");
 
   return { text, contentHtml, title: "", handle, isArticle: false };
 }
@@ -378,6 +397,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch(() => sendResponse({}));
     return true;
   }
+  // Bookmark sync coordination
+  if (msg.type === "bookmark-sync-start-bg") {
+    // Open bookmarks page in a background tab and start sync there
+    bookmarkSyncStartBg().then(sendResponse);
+    return true;
+  }
+  if (msg.type === "bookmark-sync-progress") {
+    // Show saved count on extension badge so user sees progress from any tab
+    const count = msg.saved || 0;
+    chrome.action.setBadgeText({ text: count > 0 ? String(count) : "" });
+    chrome.action.setBadgeBackgroundColor({ color: "#0066cc" });
+    return false;
+  }
+  if (msg.type === "bookmark-sync-check") {
+    chrome.storage.local.get("bookmarkSyncPending").then((data) => {
+      sendResponse({ shouldSync: !!data.bookmarkSyncPending });
+    });
+    return true;
+  }
+  if (msg.type === "bookmark-sync-complete") {
+    bookmarkSyncDone(msg, sender.tab?.id).then(sendResponse);
+    return true;
+  }
   // Reader page asks us to prepare for an archive capture
   if (msg.type === "prepare-archive") {
     chrome.storage.local.set({
@@ -437,8 +479,10 @@ async function saveBookmark(data) {
     }
     const bookmark = await res.json();
 
-    // Fire-and-forget: capture page HTML and archive it
-    captureAndArchive(bookmark.id, token, data.url).catch(() => {});
+    // Fire-and-forget: capture page HTML and archive it (skip during bulk sync)
+    if (!data.skipArchive) {
+      captureAndArchive(bookmark.id, token, data.url).catch(() => {});
+    }
 
     return { ok: true, bookmark };
   } catch (err) {
@@ -799,6 +843,66 @@ async function kindleRelayToApp(message) {
     await chrome.tabs.sendMessage(kindleSyncState.appTabId, message);
   } catch {}
 }
+
+// --- Bookmark sync helpers ---
+
+async function bookmarkSyncStartBg() {
+  // Set pending flag so the content script auto-starts when the page loads
+  await chrome.storage.local.set({ bookmarkSyncPending: true });
+
+  // Open bookmarks page in a background (inactive) tab
+  const tab = await chrome.tabs.create({
+    url: "https://x.com/i/bookmarks",
+    active: false,
+  });
+
+  // Track the sync tab so we can close it when done
+  await chrome.storage.local.set({
+    bookmarkSyncTabId: tab.id,
+  });
+
+  return { ok: true };
+}
+
+async function bookmarkSyncDone(msg, syncTabId) {
+  await chrome.storage.local.remove(["bookmarkSyncPending", "bookmarkSyncTabId"]);
+
+  // Clear the badge
+  chrome.action.setBadgeText({ text: "" });
+
+  // Close the background sync tab if it was opened by us
+  if (syncTabId) {
+    try { await chrome.tabs.remove(syncTabId); } catch {}
+  }
+
+  // Show a notification toast on any active X.com tab
+  const saved = msg.saved || 0;
+  const found = msg.found || 0;
+  const reason = msg.reason || "Complete";
+  if (saved > 0 || found > 0) {
+    try {
+      const tabs = await chrome.tabs.query({ url: ["https://x.com/*", "https://twitter.com/*"] });
+      for (const tab of tabs) {
+        if (tab.id === syncTabId) continue;
+        chrome.tabs.sendMessage(tab.id, {
+          type: "bookmark-sync-notify",
+          message: `Sync complete — ${saved} bookmarks saved (${reason})`,
+        }).catch(() => {});
+        break; // notify just one tab
+      }
+    } catch {}
+  }
+
+  return { ok: true };
+}
+
+// Clean up if sync tab is closed mid-sync
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const { bookmarkSyncTabId } = await chrome.storage.local.get("bookmarkSyncTabId");
+  if (bookmarkSyncTabId && bookmarkSyncTabId === tabId) {
+    await chrome.storage.local.remove(["bookmarkSyncPending", "bookmarkSyncTabId"]);
+  }
+});
 
 // --- Config helpers ---
 

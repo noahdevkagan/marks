@@ -502,6 +502,36 @@ final class SupabaseService {
         return try decoder.decode(MetadataResponse.self, from: data)
     }
 
+    /// Trigger server-side article extraction (Readability → archive.ph → Wayback)
+    /// for a bookmark via the web API. Returns true when the server archived content.
+    func triggerArchive(bookmarkID: Int, allowRetry: Bool = true) async throws -> Bool {
+        let apiURL = Config.webAppURL.appendingPathComponent("/api/bookmarks/\(bookmarkID)/archive")
+        var req = URLRequest(url: apiURL)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Bearer \(accessToken ?? apiKey)", forHTTPHeaderField: "Authorization")
+        req.httpBody = Data("{}".utf8)
+        // Extraction can fall through to archive.ph/Wayback; the route allows up to 60s
+        req.timeoutInterval = 90
+
+        let (_, response) = try await URLSession.shared.data(for: req)
+        guard let http = response as? HTTPURLResponse else { throw SupabaseError.unknown }
+
+        if http.statusCode == 401 {
+            if allowRetry, try await refreshSession() {
+                return try await triggerArchive(bookmarkID: bookmarkID, allowRetry: false)
+            }
+            throw SupabaseError.unauthorized
+        }
+        return (200..<300).contains(http.statusCode)
+    }
+
+    /// Replace all tags on a bookmark: clear junction rows, then re-insert.
+    func replaceBookmarkTags(bookmarkID: Int, tags: [String]) async throws {
+        _ = try await request("/rest/v1/bookmark_tags", method: "DELETE", query: ["bookmark_id": "eq.\(bookmarkID)"])
+        try await setBookmarkTags(bookmarkID: bookmarkID, tags: tags)
+    }
+
     /// Fetch archived content for a single bookmark from the server.
     func fetchArchivedContent(bookmarkID: Int) async throws -> ArchivedContentRow? {
         let data = try await request("/rest/v1/archived_content", query: [

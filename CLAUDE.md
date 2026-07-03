@@ -22,6 +22,7 @@
 - `npm run dev` — Start dev server
 - `npm run build` — Production build
 - `npx tsx scripts/test-suggest-tags.ts` — Run tag suggestion tests
+- `npx tsx scripts/test-extract-fallbacks.ts [url]` — Test article extraction fallback chain
 - `npx tsx scripts/import-pinboard.ts <file> <user-id>` — Import Pinboard bookmarks
 - `npx tsx scripts/import-twitter.ts <file> <user-id>` — Import Twitter archive
 

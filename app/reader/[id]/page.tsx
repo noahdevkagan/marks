@@ -241,7 +241,11 @@ export default async function ReaderPage({ params }: Props) {
               <>
                 <span>&middot;</span>
                 <span className="reader-source">
-                  via {archived.source === "wayback" ? "wayback machine" : "archive.ph"}
+                  via {archived.source === "wayback"
+                    ? "wayback machine"
+                    : archived.source === "jina"
+                      ? "jina reader"
+                      : "archive.ph"}
                 </span>
               </>
             )}

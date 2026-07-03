@@ -81,6 +81,28 @@ export default function KindlePage() {
   const [loaded, setLoaded] = useState(false);
   const autoSynced = useRef(false);
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // If the sync makes no progress for a while (extension relay missing,
+  // Amazon tab closed without us noticing, etc.), unstick the UI so the
+  // user can retry instead of staring at "Opening Amazon..." forever.
+  function armWatchdog() {
+    if (watchdogRef.current) clearTimeout(watchdogRef.current);
+    watchdogRef.current = setTimeout(() => {
+      watchdogRef.current = null;
+      setSyncing(false);
+      setSyncMessage(
+        "Sync timed out — check the Amazon tab, then click Sync now to retry"
+      );
+    }, 60000);
+  }
+
+  function disarmWatchdog() {
+    if (watchdogRef.current) {
+      clearTimeout(watchdogRef.current);
+      watchdogRef.current = null;
+    }
+  }
 
   // Load data: try localStorage first, then fetch from server
   useEffect(() => {
@@ -125,6 +147,11 @@ export default function KindlePage() {
 
       switch (event.data.type) {
         case "marks:pong-extension":
+          // A pong proves the extension's relay content script is actually
+          // listening on this page. window.__marks_extension alone doesn't:
+          // it's set by a separate MAIN-world script that runs on every page,
+          // while the relay only exists after a full page load — so starting
+          // a sync before the pong drops the message and hangs the UI.
           if (pingIntervalRef.current) {
             clearInterval(pingIntervalRef.current);
             pingIntervalRef.current = null;
@@ -134,17 +161,21 @@ export default function KindlePage() {
             autoSynced.current = true;
             setSyncing(true);
             setSyncMessage("Opening Amazon...");
+            armWatchdog();
             window.postMessage({ type: "marks:kindle-start-sync" }, "*");
           }
           break;
         case "marks:kindle-sync-progress":
           setSyncMessage(event.data.message);
+          armWatchdog();
           break;
         case "marks:kindle-sync-error":
+          disarmWatchdog();
           setSyncing(false);
           setSyncMessage(event.data.error || "Sync failed");
           break;
         case "marks:kindle-sync-data": {
+          disarmWatchdog();
           const payload = event.data.payload as KindleData;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
           setData(payload);
@@ -159,17 +190,8 @@ export default function KindlePage() {
 
     window.addEventListener("message", onMessage);
 
-    if ((window as any).__marks_extension) {
-      setExtensionReady(true);
-      if (!autoSynced.current) {
-        autoSynced.current = true;
-        setSyncing(true);
-        setSyncMessage("Opening Amazon...");
-        window.postMessage({ type: "marks:kindle-start-sync" }, "*");
-      }
-    }
-
-    // Retry pinging — content script may not have injected yet on first load
+    // Ping until the relay content script answers — it injects at
+    // document_idle, so it can appear well after this effect runs.
     window.postMessage({ type: "marks:ping-extension" }, "*");
     pingIntervalRef.current = setInterval(() => {
       window.postMessage({ type: "marks:ping-extension" }, "*");
@@ -181,6 +203,7 @@ export default function KindlePage() {
         clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = null;
       }
+      disarmWatchdog();
     };
   }, []);
 
@@ -188,6 +211,7 @@ export default function KindlePage() {
     if (syncing || !extensionReady) return;
     setSyncing(true);
     setSyncMessage("Opening Amazon...");
+    armWatchdog();
     window.postMessage({ type: "marks:kindle-start-sync" }, "*");
   }
 
@@ -345,6 +369,11 @@ export default function KindlePage() {
           >
             {syncing ? syncMessage || "Syncing..." : "Sync Now"}
           </button>
+          {!syncing && syncMessage && (
+            <p style={{ color: "var(--text-muted)", marginTop: "0.75rem" }}>
+              {syncMessage}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -363,7 +392,9 @@ export default function KindlePage() {
               background: syncing ? "#fcd34d" : syncDotColor,
             }}
           />
-          <span>{syncing ? syncMessage || "Syncing..." : syncLabel}</span>
+          <span>
+            {syncing ? syncMessage || "Syncing..." : syncMessage || syncLabel}
+          </span>
         </div>
         {extensionReady && (
           <button

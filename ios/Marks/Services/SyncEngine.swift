@@ -98,6 +98,7 @@ final class SyncEngine {
                     is_archived: bookmark.isArchived
                 )
                 try await supabase.updateBookmark(id: bookmark.id, update)
+                try await supabase.replaceBookmarkTags(bookmarkID: bookmark.id, tags: bookmark.tags)
                 bookmark.syncStatus = .synced
 
             case .synced:

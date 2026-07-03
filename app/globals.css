@@ -353,6 +353,13 @@ header nav .nav-add {
   max-width: 480px;
 }
 
+/* Popup mode (bookmarklet / extension window): hide the app tab bar so it
+   can't cover the Save button in the small fixed-height window */
+.add-popup ~ .mobile-bottom-nav,
+body:has(.add-popup) .mobile-bottom-nav {
+  display: none;
+}
+
 .add-container h1 {
   font-size: 1.25rem;
   font-weight: 600;

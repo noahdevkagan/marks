@@ -1,7 +1,5 @@
-Initial release of Marks for iOS.
+Bookmarks you share from other apps now show the page's real title instead of the raw URL. Titles are fetched right on your device, so sites that block automated servers work too.
 
-- Save bookmarks from any app via the share extension
-- Clean reader view for articles, tweets, and PDFs
-- Tag-based organization with search
-- Offline reading with local content caching
-- Secure sync powered by Supabase
+- Shared files are titled with their filename
+- More reliable syncing: one failed bookmark no longer holds up the rest
+- Fixed saves getting stuck when your session expired mid-sync

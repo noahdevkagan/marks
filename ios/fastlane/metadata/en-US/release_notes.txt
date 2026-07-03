@@ -1,7 +1,6 @@
-Initial release of Marks for iOS.
+Reader view improvements:
 
-- Save bookmarks from any app via the share extension
-- Clean reader view for articles, tweets, and PDFs
-- Tag-based organization with search
-- Offline reading with local content caching
-- Secure sync powered by Supabase
+- Articles now open in a clean reader view — if content wasn't saved yet, Marks extracts it on the spot instead of showing the raw web page
+- New reading toolbar: mark finished, edit tags, and share right from the article
+- Fixed mobile saves showing raw URLs instead of page titles
+- Fixed Kindle sync getting stuck on "Opening Amazon..."

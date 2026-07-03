@@ -11,17 +11,23 @@ submit_for_review(false)
 automatic_release(false)
 skip_binary_upload(false)
 
+# Precheck can't inspect IAPs with API-key auth (and this app has none)
+precheck_include_in_app_purchases(false)
+
 # App review info (demo account for reviewer)
 app_review_information(
   demo_user: "reviewer@getmarks.sh",
   demo_password: "ReviewMarks2026!"
 )
 
-# Pricing
-price_tier(0)  # Free
+# Pricing: managed in App Store Connect (free). Re-uploading it hits
+# removed API attributes (availableInNewTerritories) on older fastlane.
+# price_tier(0)
 
-# App rating
-app_rating_config_path("./fastlane/rating_config.json")
+# App rating: already set in App Store Connect; the local config uses
+# age-rating keys Apple's API has since renamed (GAMBLING_CONTEST), which
+# makes the upload fail. Leave it managed in ASC.
+# app_rating_config_path("./fastlane/rating_config.json")
 
 # Categories
 primary_category("UTILITIES")

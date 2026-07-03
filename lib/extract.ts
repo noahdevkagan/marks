@@ -8,7 +8,7 @@ export type ExtractedArticle = {
   excerpt: string;
   byline: string;
   word_count: number;
-  source: "readability" | "archive.ph" | "wayback";
+  source: "readability" | "archive.ph" | "wayback" | "jina";
 };
 
 const MIN_CONTENT_LENGTH = 200;
@@ -47,6 +47,13 @@ export async function extractArticle(
 
   if (wayback && wayback.content_text.length >= MIN_CONTENT_LENGTH) {
     return { ...wayback, source: "wayback" };
+  }
+
+  // Step 4: fall back to Jina reader (renders JS, gets past most bot walls)
+  const jina = await tryJinaReader(url);
+
+  if (jina && jina.content_text.length >= MIN_CONTENT_LENGTH) {
+    return { ...jina, source: "jina" };
   }
 
   // Return whatever we got (direct may have partial content), or null
@@ -97,8 +104,35 @@ async function tryArchivePh(
 async function tryWaybackMachine(
   url: string,
 ): Promise<Omit<ExtractedArticle, "source"> | null> {
+  // The naive /web/2/<url> redirect picks the newest snapshot regardless of
+  // status — often a captured 403/bot-block page. Ask the CDX API for
+  // snapshots that returned 200 and try the most recent ones.
+  const timestamps = await waybackSnapshots(url);
+
+  for (const ts of timestamps) {
+    try {
+      // id_ flag serves the raw original HTML (no toolbar, no URL rewriting)
+      const snapshotUrl = `https://web.archive.org/web/${ts}id_/${encodeURI(url)}`;
+      const res = await fetch(snapshotUrl, {
+        headers: FETCH_HEADERS,
+        redirect: "follow",
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (!res.ok) continue;
+
+      const html = await res.text();
+      const parsed = parseWithReadability(html, url);
+      if (parsed && parsed.content_text.length >= MIN_CONTENT_LENGTH) {
+        return parsed;
+      }
+    } catch {
+      // try the next snapshot
+    }
+  }
+
+  // CDX unavailable or no usable snapshot — fall back to the redirect endpoint
   try {
-    // web.archive.org/web/2/<url> redirects to the most recent snapshot
     const waybackUrl = `https://web.archive.org/web/2/${encodeURI(url)}`;
     const res = await fetch(waybackUrl, {
       headers: FETCH_HEADERS,
@@ -116,6 +150,58 @@ async function tryWaybackMachine(
       "",
     );
 
+    return parseWithReadability(html, url);
+  } catch {
+    return null;
+  }
+}
+
+// Newest-first timestamps of snapshots that captured an HTTP 200 response
+async function waybackSnapshots(url: string): Promise<string[]> {
+  try {
+    // limit=-3 returns the 3 most recent matches
+    const cdxUrl = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(url)}&output=json&filter=statuscode:200&fl=timestamp&limit=-3`;
+    const res = await fetch(cdxUrl, {
+      headers: FETCH_HEADERS,
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!res.ok) return [];
+
+    const rows = (await res.json()) as string[][];
+    // First row is the header (["timestamp"]); newest last
+    return rows
+      .slice(1)
+      .map((row) => row[0])
+      .filter(Boolean)
+      .reverse();
+  } catch {
+    return [];
+  }
+}
+
+async function tryJinaReader(
+  url: string,
+): Promise<Omit<ExtractedArticle, "source"> | null> {
+  try {
+    // r.jina.ai renders the page in a headless browser — gets past bot walls
+    // that block plain fetches. Free tier is rate-limited; JINA_API_KEY
+    // (optional) raises the limit.
+    const headers: Record<string, string> = {
+      "X-Respond-With": "html",
+    };
+    if (process.env.JINA_API_KEY) {
+      headers.Authorization = `Bearer ${process.env.JINA_API_KEY}`;
+    }
+
+    const res = await fetch(`https://r.jina.ai/${encodeURI(url)}`, {
+      headers,
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!res.ok) return null;
+
+    const html = await res.text();
     return parseWithReadability(html, url);
   } catch {
     return null;
@@ -303,6 +389,11 @@ export async function extractViaArchive(
   const waybackResult = await tryWaybackMachine(url);
   if (waybackResult && waybackResult.content_text.length >= MIN_CONTENT_LENGTH) {
     return { ...waybackResult, source: "wayback" };
+  }
+
+  const jinaResult = await tryJinaReader(url);
+  if (jinaResult && jinaResult.content_text.length >= MIN_CONTENT_LENGTH) {
+    return { ...jinaResult, source: "jina" };
   }
 
   return null;

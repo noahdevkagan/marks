@@ -19,8 +19,8 @@ def get_pbxproj_value(key)
   match ? match[1] : nil
 end
 
-API_KEY_PATH = File.expand_path("~/.appstoreconnect/AuthKey_65LKS2V2WM.p8")
-API_KEY_ID = "65LKS2V2WM"
+API_KEY_PATH = File.expand_path("~/.appstoreconnect/AuthKey_LXHRKTW3J6.p8")
+API_KEY_ID = "LXHRKTW3J6"
 API_ISSUER_ID = "c69ffd7a-8a60-457a-8af1-657dada57476"
 
 def authenticate_app_store_connect

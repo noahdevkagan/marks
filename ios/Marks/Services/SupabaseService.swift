@@ -391,7 +391,7 @@ final class SupabaseService {
 
     /// Create a bookmark via the web API endpoint, which extracts metadata (page title, etc.)
     /// when the title is missing or looks like a URL.
-    func createBookmarkViaWebAPI(_ insert: BookmarkInsert) async throws -> WebAPIBookmarkResponse {
+    func createBookmarkViaWebAPI(_ insert: BookmarkInsert, allowRetry: Bool = true) async throws -> WebAPIBookmarkResponse {
         let apiURL = Config.webAppURL.appendingPathComponent("/api/bookmarks")
         var req = URLRequest(url: apiURL)
         req.httpMethod = "POST"
@@ -407,7 +407,19 @@ final class SupabaseService {
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+        guard let http = response as? HTTPURLResponse else {
+            throw SupabaseError.api("Failed to create bookmark via web API")
+        }
+
+        // On 401, refresh the token once and retry with the new one
+        if http.statusCode == 401, allowRetry {
+            if try await refreshSession() {
+                return try await createBookmarkViaWebAPI(insert, allowRetry: false)
+            }
+            throw SupabaseError.unauthorized
+        }
+
+        guard (200..<300).contains(http.statusCode) else {
             throw SupabaseError.api("Failed to create bookmark via web API")
         }
         return try decoder.decode(WebAPIBookmarkResponse.self, from: data)

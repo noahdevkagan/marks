@@ -24,7 +24,7 @@ final class SyncEngine {
 
     func sync(context: ModelContext) async throws {
         // 1. Import bookmarks saved via the share extension (always works, no auth needed)
-        importShareExtensionQueue(context: context)
+        await importShareExtensionQueue(context: context)
 
         // 2. Only sync with server if signed in
         guard await supabase.currentUser != nil else {
@@ -32,24 +32,50 @@ final class SyncEngine {
             return
         }
 
-        // 3. Push local pending changes
-        try await pushPending(context: context)
+        // 3. Push local pending changes. A push failure shouldn't block the pull —
+        // hold the error, pull, then surface it.
+        var pushError: Error?
+        do {
+            try await pushPending(context: context)
+        } catch {
+            pushError = error
+        }
 
         // 4. Pull remote changes
         try await pullRemote(context: context)
 
         try context.save()
+
+        if let pushError { throw pushError }
     }
 
     /// Import bookmarks queued by the share extension via shared UserDefaults.
-    private func importShareExtensionQueue(context: ModelContext) {
+    private func importShareExtensionQueue(context: ModelContext) async {
         let defaults = UserDefaults(suiteName: Config.appGroupID)
         guard let queue = defaults?.array(forKey: "pendingBookmarks") as? [[String: String]],
               !queue.isEmpty else { return }
 
-        for entry in queue {
+        // The share extension rarely gets a title from the share sheet, and the
+        // server-side fallback is bot-blocked by many sites. Resolve titles here,
+        // on the phone's own connection, before inserting.
+        let fetchedTitles: [String?] = await withTaskGroup(of: (Int, String?).self) { group in
+            for (index, entry) in queue.enumerated() {
+                guard let url = entry["url"] else { continue }
+                let queuedTitle = entry["title"] ?? ""
+                if PageTitleFetcher.needsTitle(queuedTitle, url: url) {
+                    group.addTask { (index, await PageTitleFetcher.title(for: url)) }
+                }
+            }
+            var titles = [String?](repeating: nil, count: queue.count)
+            for await (index, title) in group {
+                titles[index] = title
+            }
+            return titles
+        }
+
+        for (index, entry) in queue.enumerated() {
             guard let url = entry["url"] else { continue }
-            let title = entry["title"] ?? ""
+            let title = fetchedTitles[index] ?? entry["title"] ?? ""
             let bookmark = Bookmark(
                 id: Int.random(in: 100_000...999_999),
                 url: url,
@@ -71,39 +97,51 @@ final class SyncEngine {
         )
         let pending = try context.fetch(pendingDescriptor)
 
+        // One failing bookmark (unreachable URL, transient 5xx) must not strand
+        // the rest of the queue — push everything, then surface the first error.
+        var firstError: Error?
+
         for bookmark in pending {
-            switch bookmark.syncStatus {
-            case .pending:
-                let insert = SupabaseService.BookmarkInsert(
-                    url: bookmark.url,
-                    title: bookmark.title,
-                    description: bookmark.desc,
-                    tags: bookmark.tags
-                )
-                // Use web API which extracts page title when missing
-                let response = try await supabase.createBookmarkViaWebAPI(insert)
-                bookmark.id = response.id
-                bookmark.title = response.title
-                bookmark.syncStatus = .synced
+            do {
+                switch bookmark.syncStatus {
+                case .pending:
+                    let insert = SupabaseService.BookmarkInsert(
+                        url: bookmark.url,
+                        title: bookmark.title,
+                        description: bookmark.desc,
+                        tags: bookmark.tags
+                    )
+                    // Use web API which extracts page title when missing
+                    let response = try await supabase.createBookmarkViaWebAPI(insert)
+                    bookmark.id = response.id
+                    if !response.title.isEmpty {
+                        bookmark.title = response.title
+                    }
+                    bookmark.syncStatus = .synced
 
-            case .deleted:
-                try await supabase.deleteBookmark(id: bookmark.id)
-                context.delete(bookmark)
+                case .deleted:
+                    try await supabase.deleteBookmark(id: bookmark.id)
+                    context.delete(bookmark)
 
-            case .modified:
-                let update = SupabaseService.BookmarkUpdate(
-                    title: bookmark.title,
-                    description: bookmark.desc,
-                    is_read: bookmark.isRead,
-                    is_archived: bookmark.isArchived
-                )
-                try await supabase.updateBookmark(id: bookmark.id, update)
-                bookmark.syncStatus = .synced
+                case .modified:
+                    let update = SupabaseService.BookmarkUpdate(
+                        title: bookmark.title,
+                        description: bookmark.desc,
+                        is_read: bookmark.isRead,
+                        is_archived: bookmark.isArchived
+                    )
+                    try await supabase.updateBookmark(id: bookmark.id, update)
+                    bookmark.syncStatus = .synced
 
-            case .synced:
-                break
+                case .synced:
+                    break
+                }
+            } catch {
+                if firstError == nil { firstError = error }
             }
         }
+
+        if let firstError { throw firstError }
     }
 
     // MARK: — Pull remote → local

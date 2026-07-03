@@ -164,7 +164,7 @@ function AddForm() {
   }
 
   return (
-    <div className="container add-container">
+    <div className={`container add-container${isPopup ? " add-popup" : ""}`}>
       <h1>Add Bookmark</h1>
 
       <form onSubmit={handleSubmit} className="add-form">

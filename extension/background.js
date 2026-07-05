@@ -4,21 +4,35 @@ function isTweetUrl(url) {
   try {
     const u = new URL(url);
     const host = u.hostname.replace("www.", "");
-    return (host === "x.com" || host === "twitter.com") && u.pathname.includes("/status/");
-  } catch { return false; }
+    return (
+      (host === "x.com" || host === "twitter.com") &&
+      u.pathname.includes("/status/")
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Injected into the page to extract tweet or X Article text + HTML */
 function extractTweetContentFromPage() {
   function esc(s) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
   function cleanImgSrc(src) {
-    try { const u = new URL(src); return u.origin + u.pathname + "?format=jpg&name=large"; }
-    catch { return src; }
+    try {
+      const u = new URL(src);
+      return u.origin + u.pathname + "?format=jpg&name=large";
+    } catch {
+      return src;
+    }
   }
   function getInlineStyle(node, stopAt) {
-    let isBold = false, isItalic = false;
+    let isBold = false,
+      isItalic = false;
     let el = node.parentElement;
     while (el && el !== stopAt) {
       const style = el.getAttribute("style") || "";
@@ -32,12 +46,13 @@ function extractTweetContentFromPage() {
     let html = "";
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     let node;
-    while (node = walker.nextNode()) {
+    while ((node = walker.nextNode())) {
       const text = node.textContent;
       if (!text) continue;
       const { isBold, isItalic } = getInlineStyle(node, el);
       let escaped = esc(text);
-      if (isBold && isItalic) escaped = "<strong><em>" + escaped + "</em></strong>";
+      if (isBold && isItalic)
+        escaped = "<strong><em>" + escaped + "</em></strong>";
       else if (isBold) escaped = "<strong>" + escaped + "</strong>";
       else if (isItalic) escaped = "<em>" + escaped + "</em>";
       html += escaped;
@@ -69,7 +84,9 @@ function extractTweetContentFromPage() {
             const a = el.tagName === "A" ? el : el.querySelector("a");
             const href = a?.getAttribute("href") || "";
             const text = el.textContent || "";
-            const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
+            const fullHref = href.startsWith("/")
+              ? "https://x.com" + href
+              : href;
             html += '<a href="' + esc(fullHref) + '">' + esc(text) + "</a>";
           } else {
             html += walk(el);
@@ -92,9 +109,13 @@ function extractTweetContentFromPage() {
   }
 
   // Check for X Article (long-form)
-  const articleReadView = document.querySelector('[data-testid="twitterArticleReadView"]');
+  const articleReadView = document.querySelector(
+    '[data-testid="twitterArticleReadView"]',
+  );
   if (articleReadView) {
-    const titleEl = document.querySelector('[data-testid="twitter-article-title"]');
+    const titleEl = document.querySelector(
+      '[data-testid="twitter-article-title"]',
+    );
     const articleTitle = titleEl?.textContent?.trim() || "";
     const article = document.querySelector("article");
     const handle = getHandle(article);
@@ -114,16 +135,27 @@ function extractTweetContentFromPage() {
       for (const child of container.children) {
         const tag = child.tagName;
         if (tag === "BLOCKQUOTE") {
-          blocks.push("<blockquote>" + esc(child.textContent?.trim() || "") + "</blockquote>");
+          blocks.push(
+            "<blockquote>" +
+              esc(child.textContent?.trim() || "") +
+              "</blockquote>",
+          );
           continue;
         }
         if (tag === "SECTION") {
           const pre = child.querySelector("pre");
-          if (pre) { blocks.push("<pre><code>" + esc(pre.textContent || "") + "</code></pre>"); continue; }
+          if (pre) {
+            blocks.push(
+              "<pre><code>" + esc(pre.textContent || "") + "</code></pre>",
+            );
+            continue;
+          }
           const img = child.querySelector("img");
           if (img?.src?.includes("pbs.twimg.com")) {
             const src = cleanImgSrc(img.src);
-            blocks.push('<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />');
+            blocks.push(
+              '<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />',
+            );
             mediaUrls.push(src);
             continue;
           }
@@ -132,16 +164,23 @@ function extractTweetContentFromPage() {
           continue;
         }
         if (tag === "UL") {
-          const items = [...child.querySelectorAll("li")].map(li => "<li>" + processInline(li) + "</li>");
+          const items = [...child.querySelectorAll("li")].map(
+            (li) => "<li>" + processInline(li) + "</li>",
+          );
           blocks.push("<ul>" + items.join("") + "</ul>");
           continue;
         }
         const h2 = child.querySelector("h2");
-        if (h2) { blocks.push("<h2>" + esc(h2.textContent?.trim() || "") + "</h2>"); continue; }
+        if (h2) {
+          blocks.push("<h2>" + esc(h2.textContent?.trim() || "") + "</h2>");
+          continue;
+        }
         const img = child.querySelector("img");
         if (img?.src?.includes("pbs.twimg.com")) {
           const src = cleanImgSrc(img.src);
-          blocks.push('<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />');
+          blocks.push(
+            '<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />',
+          );
           mediaUrls.push(src);
           continue;
         }
@@ -153,7 +192,14 @@ function extractTweetContentFromPage() {
     }
 
     const bodyText = articleReadView.innerText?.trim() || "";
-    return { text: bodyText, contentHtml, title: articleTitle, handle, isArticle: true, mediaUrls };
+    return {
+      text: bodyText,
+      contentHtml,
+      title: articleTitle,
+      handle,
+      isArticle: true,
+      mediaUrls,
+    };
   }
 
   // Regular tweet
@@ -170,13 +216,82 @@ function extractTweetContentFromPage() {
     const imgs = article.querySelectorAll('img[src*="pbs.twimg.com"]');
     for (const img of imgs) {
       if (!img.src.includes("profile_images")) {
-        contentHtml += '\n<img src="' + esc(cleanImgSrc(img.src)) + '" alt="Tweet media" />';
+        contentHtml +=
+          '\n<img src="' + esc(cleanImgSrc(img.src)) + '" alt="Tweet media" />';
       }
     }
   }
 
   return { text, contentHtml, title: "", handle, isArticle: false };
 }
+
+// --- Saved-page badge ---
+// Shows ✓ on the toolbar icon when the current page is already saved to Marks.
+// Cache avoids re-hitting the API on rapid tab switches; entries expire after 60s
+// so external changes (e.g. deleting a bookmark in the web app) get picked up.
+const savedCheckCache = new Map(); // url -> { exists, ts }
+const SAVED_CACHE_TTL = 60000;
+
+function markUrlSaved(url, tabId) {
+  if (url) savedCheckCache.set(url, { exists: true, ts: Date.now() });
+  showSavedBadge(tabId);
+}
+
+// Count successful saves — popup shows a review prompt after enough of them
+function incrementSaveCount() {
+  chrome.storage.local
+    .get("saveCount")
+    .then(({ saveCount }) =>
+      chrome.storage.local.set({ saveCount: (saveCount || 0) + 1 }),
+    )
+    .catch(() => {});
+}
+
+function showSavedBadge(tabId) {
+  if (tabId == null) return;
+  chrome.action.setBadgeText({ text: "✓", tabId });
+  chrome.action.setBadgeBackgroundColor({ color: "#0066cc", tabId });
+}
+
+async function updateBadgeForTab(tabId, url) {
+  if (!url || !/^https?:/.test(url)) {
+    chrome.action.setBadgeText({ text: "", tabId }).catch(() => {});
+    return;
+  }
+
+  let entry = savedCheckCache.get(url);
+  if (!entry || Date.now() - entry.ts > SAVED_CACHE_TTL) {
+    const result = await checkExistingBookmark(url);
+    entry = { exists: !!result.exists, ts: Date.now() };
+    savedCheckCache.set(url, entry);
+    if (savedCheckCache.size > 500) {
+      savedCheckCache.delete(savedCheckCache.keys().next().value);
+    }
+  }
+
+  chrome.action
+    .setBadgeText({ text: entry.exists ? "✓" : "", tabId })
+    .catch(() => {});
+  if (entry.exists) {
+    chrome.action
+      .setBadgeBackgroundColor({ color: "#0066cc", tabId })
+      .catch(() => {});
+  }
+}
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.tabs
+    .get(tabId)
+    .then((tab) => updateBadgeForTab(tabId, tab.url))
+    .catch(() => {});
+});
+
+chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
+  // Active tabs only — background tabs get checked via onActivated when
+  // the user switches to them (avoids an API burst on session restore)
+  if (info.status === "complete" && tab.active)
+    updateBadgeForTab(tabId, tab.url);
+});
 
 // Context menu setup
 chrome.runtime.onInstalled.addListener(() => {
@@ -247,46 +362,56 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
           func: (isLI) => {
             if (isLI) {
               const selectors = [
-                '.feed-shared-update-v2__description',
-                '.update-components-text',
+                ".feed-shared-update-v2__description",
+                ".update-components-text",
                 '[data-ad-preview="message"]',
-                '.break-words',
-                '.feed-shared-update-v2 .break-words',
-                '.feed-shared-inline-show-more-text',
-                '.attributed-text-segment-list__content',
+                ".break-words",
+                ".feed-shared-update-v2 .break-words",
+                ".feed-shared-inline-show-more-text",
+                ".attributed-text-segment-list__content",
               ];
               for (const sel of selectors) {
                 const el = document.querySelector(sel);
                 if (el) {
                   const text = el.innerText?.trim() || "";
-                  const firstLine = text.split('\n').find(l => l.trim().length > 0) || "";
+                  const firstLine =
+                    text.split("\n").find((l) => l.trim().length > 0) || "";
                   if (firstLine.length > 3) {
-                    return firstLine.length > 120 ? firstLine.slice(0, 117) + "..." : firstLine;
+                    return firstLine.length > 120
+                      ? firstLine.slice(0, 117) + "..."
+                      : firstLine;
                   }
                 }
               }
-              const allSpans = document.querySelectorAll('span[dir="ltr"], span.break-words, div.break-words');
+              const allSpans = document.querySelectorAll(
+                'span[dir="ltr"], span.break-words, div.break-words',
+              );
               let best = "";
               for (const span of allSpans) {
                 const t = span.innerText?.trim() || "";
                 if (t.length > best.length && t.length > 20) best = t;
               }
               if (best) {
-                const firstLine = best.split('\n').find(l => l.trim().length > 0) || "";
+                const firstLine =
+                  best.split("\n").find((l) => l.trim().length > 0) || "";
                 if (firstLine.length > 3) {
-                  return firstLine.length > 120 ? firstLine.slice(0, 117) + "..." : firstLine;
+                  return firstLine.length > 120
+                    ? firstLine.slice(0, 117) + "..."
+                    : firstLine;
                 }
               }
             }
             const og = document.querySelector('meta[property="og:title"]');
             const ogContent = og?.getAttribute("content") || "";
-            if (ogContent && !["Home", "Feed", "LinkedIn"].includes(ogContent)) return ogContent;
+            if (ogContent && !["Home", "Feed", "LinkedIn"].includes(ogContent))
+              return ogContent;
             return "";
           },
           args: [isLinkedIn],
         });
         const extractedTitle = results?.[0]?.result;
-        if (extractedTitle && extractedTitle.length > 3) saveBody.title = extractedTitle;
+        if (extractedTitle && extractedTitle.length > 3)
+          saveBody.title = extractedTitle;
       } catch {
         // scripting may fail on some pages
       }
@@ -294,17 +419,21 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 
   try {
-    // Detect tweet URLs and add type metadata
-    const bookmarkData = { url, title: title || url, is_read: false };
-    try {
-      const parsed = new URL(url);
-      const host = parsed.hostname.replace("www.", "");
-      if ((host === "x.com" || host === "twitter.com") && parsed.pathname.includes("/status/")) {
-        bookmarkData.type = "tweet";
-        const parts = parsed.pathname.split("/");
-        if (parts[1]) bookmarkData.type_metadata = { author: parts[1] };
-      }
-    } catch {}
+    // Fallback: tag tweet URLs by pattern when DOM extraction didn't run
+    if (!saveBody.type) {
+      try {
+        const parsed = new URL(url);
+        const host = parsed.hostname.replace("www.", "");
+        if (
+          (host === "x.com" || host === "twitter.com") &&
+          parsed.pathname.includes("/status/")
+        ) {
+          saveBody.type = "tweet";
+          const parts = parsed.pathname.split("/");
+          if (parts[1]) saveBody.type_metadata = { author: parts[1] };
+        }
+      } catch {}
+    }
 
     let token = config.token;
     let res = await fetch(`${API_URL}/api/bookmarks`, {
@@ -341,14 +470,27 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       captureAndArchive(bookmark.id, token, url).catch(() => {});
     }
 
-    // Show success badge briefly
-    chrome.action.setBadgeText({ text: "✓", tabId: tab?.id });
-    chrome.action.setBadgeBackgroundColor({ color: "#0066cc", tabId: tab?.id });
-    setTimeout(() => chrome.action.setBadgeText({ text: "", tabId: tab?.id }), 2000);
+    incrementSaveCount();
+    if (info.menuItemId === "save-page") {
+      // Page itself is now saved — show persistent ✓ badge
+      markUrlSaved(url, tab?.id);
+    } else {
+      // Saved a link, not this page — show success badge briefly
+      markUrlSaved(url);
+      chrome.action.setBadgeText({ text: "✓", tabId: tab?.id });
+      chrome.action.setBadgeBackgroundColor({
+        color: "#0066cc",
+        tabId: tab?.id,
+      });
+      setTimeout(() => updateBadgeForTab(tab?.id, tab?.url), 2000);
+    }
   } catch {
     chrome.action.setBadgeText({ text: "!", tabId: tab?.id });
     chrome.action.setBadgeBackgroundColor({ color: "#cc3333", tabId: tab?.id });
-    setTimeout(() => chrome.action.setBadgeText({ text: "", tabId: tab?.id }), 3000);
+    setTimeout(
+      () => chrome.action.setBadgeText({ text: "", tabId: tab?.id }),
+      3000,
+    );
   }
 });
 
@@ -357,7 +499,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "save-bookmark") {
     saveBookmark(msg.data)
       .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message || "Background worker error" }));
+      .catch((err) =>
+        sendResponse({
+          ok: false,
+          error: err.message || "Background worker error",
+        }),
+      );
     return true; // async
   }
   if (msg.type === "suggest-tags") {
@@ -380,13 +527,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   // Reader page asks us to prepare for an archive capture
   if (msg.type === "prepare-archive") {
-    chrome.storage.local.set({
-      pendingArchive: {
-        bookmarkId: msg.bookmarkId,
-        url: msg.url,
-        readerTabId: sender.tab?.id,
-      },
-    }).then(() => sendResponse({ ok: true }));
+    chrome.storage.local
+      .set({
+        pendingArchive: {
+          bookmarkId: msg.bookmarkId,
+          url: msg.url,
+          readerTabId: sender.tab?.id,
+        },
+      })
+      .then(() => sendResponse({ ok: true }));
     return true;
   }
   // Content script on archive.today captured the HTML
@@ -420,7 +569,8 @@ async function saveBookmark(data) {
 
     if (res.status === 401) {
       token = await refreshToken(config);
-      if (!token) return { ok: false, error: "Session expired — please sign in again" };
+      if (!token)
+        return { ok: false, error: "Session expired — please sign in again" };
       res = await fetch(`${API_URL}/api/bookmarks`, {
         method: "POST",
         headers: {
@@ -433,12 +583,25 @@ async function saveBookmark(data) {
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      return { ok: false, error: errData.error || `Save failed (${res.status})` };
+      return {
+        ok: false,
+        error: errData.error || `Save failed (${res.status})`,
+      };
     }
     const bookmark = await res.json();
 
     // Fire-and-forget: capture page HTML and archive it
     captureAndArchive(bookmark.id, token, data.url).catch(() => {});
+
+    incrementSaveCount();
+
+    // Show ✓ badge if the saved URL is the active tab's page
+    chrome.tabs
+      .query({ active: true, currentWindow: true })
+      .then(([tab]) => {
+        markUrlSaved(data.url, tab?.url === data.url ? tab.id : undefined);
+      })
+      .catch(() => {});
 
     return { ok: true, bookmark };
   } catch (err) {
@@ -448,7 +611,10 @@ async function saveBookmark(data) {
 
 async function captureAndArchive(bookmarkId, token, url) {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
     if (!tab?.id) return;
 
     const results = await chrome.scripting.executeScript({
@@ -483,7 +649,12 @@ async function captureFromUrl(bookmarkId, url, readerTabId) {
     const result = await captureTabHtml(url);
 
     if (result) {
-      const archiveResult = await sendToArchive(bookmarkId, token, result, config);
+      const archiveResult = await sendToArchive(
+        bookmarkId,
+        token,
+        result,
+        config,
+      );
       if (archiveResult.ok) {
         notifyReaderTab(readerTabId, true);
         return { ok: true };
@@ -501,14 +672,23 @@ async function captureFromUrl(bookmarkId, url, readerTabId) {
         .replace(/<div id="HEADER"[\s\S]*?<\/div>\s*<!-- \/HEADER -->/i, "")
         .replace(/<script[\s\S]*?<\/script>/gi, "");
 
-      const archiveResult = await sendToArchive(bookmarkId, token, cleaned, config);
+      const archiveResult = await sendToArchive(
+        bookmarkId,
+        token,
+        cleaned,
+        config,
+      );
       if (archiveResult.ok) {
         notifyReaderTab(readerTabId, true);
         return { ok: true };
       }
     }
 
-    notifyReaderTab(readerTabId, false, "Could not extract from page or archive");
+    notifyReaderTab(
+      readerTabId,
+      false,
+      "Could not extract from page or archive",
+    );
     return { ok: false, error: "All capture methods failed" };
   } catch (e) {
     console.error("[Marks] captureFromUrl error:", e);
@@ -601,10 +781,15 @@ async function processArchiveCapture(msg, archiveTabId) {
 
   // Close the archive.today tab and restore focus to reader
   if (archiveTabId) await chrome.tabs.remove(archiveTabId).catch(() => {});
-  if (readerTabId) await chrome.tabs.update(readerTabId, { active: true }).catch(() => {});
+  if (readerTabId)
+    await chrome.tabs.update(readerTabId, { active: true }).catch(() => {});
 
   if (!msg.html || msg.html.length < 1000) {
-    notifyReaderTab(readerTabId, false, "No content captured from archive page");
+    notifyReaderTab(
+      readerTabId,
+      false,
+      "No content captured from archive page",
+    );
     return { ok: false };
   }
 
@@ -657,7 +842,9 @@ async function processArchiveCapture(msg, archiveTabId) {
 
 function notifyReaderTab(tabId, ok, error) {
   if (!tabId) return;
-  chrome.tabs.sendMessage(tabId, { type: "archive-done", ok, error }).catch(() => {});
+  chrome.tabs
+    .sendMessage(tabId, { type: "archive-done", ok, error })
+    .catch(() => {});
 }
 
 async function checkExistingBookmark(url) {
@@ -694,18 +881,16 @@ async function fetchSuggestedTags(url, title) {
     let token = config.token;
     const params = new URLSearchParams({ url });
     if (title) params.set("title", title);
-    let res = await fetch(
-      `${API_URL}/api/suggest-tags?${params}`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
+    let res = await fetch(`${API_URL}/api/suggest-tags?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
     if (res.status === 401) {
       token = await refreshToken(config);
       if (!token) return { tags: [] };
-      res = await fetch(
-        `${API_URL}/api/suggest-tags?${params}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      res = await fetch(`${API_URL}/api/suggest-tags?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     }
 
     if (!res.ok) return { tags: [] };
@@ -731,7 +916,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === "kindle-scrape-progress") {
-    kindleRelayToApp({ type: "marks:kindle-sync-progress", message: msg.message });
+    kindleRelayToApp({
+      type: "marks:kindle-sync-progress",
+      message: msg.message,
+    });
     return false;
   }
   if (msg.type === "kindle-scrape-error") {
@@ -744,7 +932,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   const { kindleSyncState } = await chrome.storage.local.get("kindleSyncState");
   if (kindleSyncState && kindleSyncState.amazonTabId === tabId) {
-    kindleRelayToApp({ type: "marks:kindle-sync-error", error: "Amazon tab was closed during sync" });
+    kindleRelayToApp({
+      type: "marks:kindle-sync-error",
+      error: "Amazon tab was closed during sync",
+    });
     await chrome.storage.local.remove("kindleSyncState");
   }
 });
@@ -762,7 +953,11 @@ async function kindleStartSync(appTabId) {
 
 async function kindleCheckScrape(amazonTabId) {
   const { kindleSyncState } = await chrome.storage.local.get("kindleSyncState");
-  if (kindleSyncState && kindleSyncState.syncPending && kindleSyncState.amazonTabId === amazonTabId) {
+  if (
+    kindleSyncState &&
+    kindleSyncState.syncPending &&
+    kindleSyncState.amazonTabId === amazonTabId
+  ) {
     return { shouldScrape: true };
   }
   return { shouldScrape: false };
@@ -774,8 +969,12 @@ async function kindleScrapeComplete(payload) {
 
   await kindleRelayToApp({ type: "marks:kindle-sync-data", payload });
 
-  try { await chrome.tabs.remove(kindleSyncState.amazonTabId); } catch {}
-  try { await chrome.tabs.update(kindleSyncState.appTabId, { active: true }); } catch {}
+  try {
+    await chrome.tabs.remove(kindleSyncState.amazonTabId);
+  } catch {}
+  try {
+    await chrome.tabs.update(kindleSyncState.appTabId, { active: true });
+  } catch {}
 
   await chrome.storage.local.remove("kindleSyncState");
   return { ok: true };
@@ -786,8 +985,12 @@ async function kindleScrapeError(error) {
 
   const { kindleSyncState } = await chrome.storage.local.get("kindleSyncState");
   if (kindleSyncState) {
-    try { await chrome.tabs.remove(kindleSyncState.amazonTabId); } catch {}
-    try { await chrome.tabs.update(kindleSyncState.appTabId, { active: true }); } catch {}
+    try {
+      await chrome.tabs.remove(kindleSyncState.amazonTabId);
+    } catch {}
+    try {
+      await chrome.tabs.update(kindleSyncState.appTabId, { active: true });
+    } catch {}
   }
   await chrome.storage.local.remove("kindleSyncState");
 }
@@ -820,14 +1023,17 @@ async function refreshToken(config) {
   }
 
   try {
-    const res = await fetch(`${config.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: config.supabaseKey,
+    const res = await fetch(
+      `${config.supabaseUrl}/auth/v1/token?grant_type=refresh_token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: config.supabaseKey,
+        },
+        body: JSON.stringify({ refresh_token: config.refreshToken }),
       },
-      body: JSON.stringify({ refresh_token: config.refreshToken }),
-    });
+    );
 
     if (!res.ok) {
       // Refresh token expired — clear tokens so popup shows login

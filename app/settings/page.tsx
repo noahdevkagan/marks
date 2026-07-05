@@ -60,7 +60,10 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<{ id: number; title: string } | null>(null);
+  const [uploadResult, setUploadResult] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -114,7 +117,10 @@ export default function SettingsPage() {
   }
 
   async function uploadPdf(file: File) {
-    if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+    if (
+      !file.name.toLowerCase().endsWith(".pdf") &&
+      file.type !== "application/pdf"
+    ) {
       setUploadError("Only PDF files are supported");
       return;
     }
@@ -225,16 +231,20 @@ export default function SettingsPage() {
       <div className="settings-section">
         <h2 className="settings-heading">Import bookmarks</h2>
         <p className="settings-description">
-          Import from Safari, Chrome, or Firefox. Export your bookmarks as an
-          HTML file, then upload it here.
+          Import from Pocket, Safari, Chrome, or Firefox. Export your bookmarks
+          as an HTML file, then upload it here. Pocket tags and save dates are
+          preserved.
         </p>
         <div className="import-steps">
+          <p className="import-step">
+            <strong>Pocket:</strong> upload your export file (ril_export.html)
+          </p>
           <p className="import-step">
             <strong>Safari:</strong> File &rarr; Export Bookmarks…
           </p>
           <p className="import-step">
-            <strong>Chrome:</strong> Bookmarks &rarr; Bookmark Manager &rarr;
-            ⋮ &rarr; Export bookmarks
+            <strong>Chrome:</strong> Bookmarks &rarr; Bookmark Manager &rarr; ⋮
+            &rarr; Export bookmarks
           </p>
           <p className="import-step">
             <strong>Firefox:</strong> Bookmarks &rarr; Manage Bookmarks &rarr;
@@ -256,9 +266,7 @@ export default function SettingsPage() {
         {importResult && (
           <div className="import-result import-success">
             Imported {importResult.imported} bookmarks
-            {importResult.skipped > 0 && (
-              <> ({importResult.skipped} skipped)</>
-            )}
+            {importResult.skipped > 0 && <> ({importResult.skipped} skipped)</>}
           </div>
         )}
         {importError && (

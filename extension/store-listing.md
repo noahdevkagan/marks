@@ -24,13 +24,15 @@ Productivity
 
 ## Detailed description
 
-Marks is a fast, private bookmark manager and read-later app for Chrome. Save any page in one click, auto-tag it with AI, read it offline, and find it again in seconds. The modern Pocket alternative — no ads, no tracking, no algorithmic feed.
+Marks is a fast, private bookmark manager and read-later app for Chrome. Save any page to your reading list in one click, auto-tag it with AI, read it offline, and find it again in seconds. The modern Pocket alternative — no ads, no tracking, no algorithmic feed.
 
-Looking for a Pocket replacement? Pocket shut down and left millions of readers without their bookmarks. Marks was built to be the tool you actually wanted Pocket to be: simple, fast, tag-based, and respectful of your attention.
+Looking for a Pocket replacement? Pocket shut down and left millions of readers without their bookmarks. Marks was built to be the tool you actually wanted Pocket to be: simple, fast, tag-based, and respectful of your attention. Still have your Pocket export file? Upload it and your bookmarks, tags, and save dates come along.
 
 ★ Why readers are switching to Marks ★
 
 • One-click bookmarking — save any article, tweet, or page from the toolbar or right-click menu
+• ✓ Saved indicator — the toolbar icon shows a checkmark on pages already in your library, so you never save twice
+• Import from Pocket, Chrome, Safari, Firefox, or Pinboard — one file upload, tags and dates preserved
 • AI-suggested tags — smart tag recommendations based on page content, no manual organizing required
 • Read-later with offline reader — pages are archived and readable even if the original goes down
 • Kindle highlights sync — pull every highlight and note from your Kindle into your bookmarks
@@ -69,6 +71,9 @@ For paywalled or dead pages, Marks integrates with archive.today (archive.ph / a
 Is Marks a free Pocket alternative?
 Yes. Marks is free to use. Sign up at getmarks.sh.
 
+Can I import my Pocket bookmarks?
+Yes. Upload your Pocket export file (ril_export.html) in Settings — your bookmarks, tags, and save dates are all preserved. Browser bookmark exports from Chrome, Safari, and Firefox work too.
+
 How do AI tags work?
 When you save a page, Marks analyzes the content and suggests relevant tags. You can accept, edit, or ignore them.
 
@@ -76,7 +81,7 @@ Does it work offline?
 Yes. Saved pages are archived and readable offline in the built-in reader.
 
 Do you track me or sell my data?
-No. Marks does not track you, run ads, or sell data. Your bookmarks are yours.
+No. Marks does not track you, run ads, or sell data. Your bookmarks are yours. When you're signed in, the extension checks page URLs against your own Marks account to show the ✓ saved indicator — this only touches your Marks server and is never stored or shared.
 
 How is Marks different from Chrome's built-in bookmarks?
 Chrome bookmarks are folder-based and give up quickly at scale. Marks is tag-based, searchable, AI-organized, and includes a built-in reader, Kindle sync, and Twitter / X integration.
@@ -108,3 +113,7 @@ Support: https://getmarks.sh/support
 - Short description fills 126/132 chars with distinct query surfaces.
 - Full description front-loads keywords in the first two sentences (all that shows before "more"), has a dedicated Pocket-switcher section, a feature list with keyword-bolded leads, a use-case section, and an FAQ that captures long-tail queries.
 - Once live: ask existing users for reviews — 0→5 reviews is the single biggest ranking jump available.
+- CWS ranking model (2026): relevance (keywords in title + summary + description) picks the ranking bucket; weekly active users, rating, and review count sort within it. Badges (Featured/Verified) matter less than assumed.
+- Rating velocity matters: add an in-extension review prompt after ~5 successful saves (non-intrusive banner). One case study: 8→47 reviews in 2 months this way.
+- Organic channels that compound (vs. launch spikes that churn ~60%): answering Reddit/forum threads from ex-Pocket users, "how to export your Pocket data" style blog posts on getmarks.sh, and the Pocket-import path being frictionless.
+- Watch weekly-active/install ratio (healthy ≈ 60%) and D1 retention (target 40%+) — onboarding fixes beat marketing below those.

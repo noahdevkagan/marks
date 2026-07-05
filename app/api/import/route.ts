@@ -10,12 +10,14 @@ type ParsedBookmark = {
   title: string;
   folder: string;
   addDate?: string;
+  tags?: string[];
 };
 
 /**
- * Parse a Netscape Bookmark File (exported from Safari, Chrome, Firefox).
- * The format uses nested <DL><DT><A HREF="...">Title</A> elements.
- * Folder names from <H3> tags become tags.
+ * Parse a Netscape Bookmark File (exported from Safari, Chrome, Firefox,
+ * Pocket, or Pinboard). The format uses nested <DL><DT><A HREF="...">Title</A>
+ * elements. Folder names from <H3> tags become tags. Pocket/Pinboard exports
+ * carry TIME_ADDED and TAGS attributes instead of folders.
  */
 function parseBookmarkHtml(html: string): ParsedBookmark[] {
   const bookmarks: ParsedBookmark[] = [];
@@ -48,9 +50,7 @@ function parseBookmarkHtml(html: string): ParsedBookmark[] {
     }
 
     // A bookmark: <DT><A HREF="..." ADD_DATE="..." ...>Title</A>
-    const linkMatch = trimmed.match(
-      /<A\s+HREF="([^"]+)"([^>]*)>(.+?)<\/A>/i,
-    );
+    const linkMatch = trimmed.match(/<A\s+HREF="([^"]+)"([^>]*)>(.+?)<\/A>/i);
     if (linkMatch) {
       const url = linkMatch[1];
       const attrs = linkMatch[2];
@@ -65,16 +65,25 @@ function parseBookmarkHtml(html: string): ParsedBookmark[] {
         continue;
       }
 
-      // Extract ADD_DATE if present (Unix timestamp)
-      const dateMatch = attrs.match(/ADD_DATE="(\d+)"/i);
+      // Extract ADD_DATE (browsers) or TIME_ADDED (Pocket) — Unix timestamp
+      const dateMatch = attrs.match(/(?:ADD_DATE|TIME_ADDED)="(\d+)"/i);
       const addDate = dateMatch ? dateMatch[1] : undefined;
+
+      // Pocket/Pinboard exports carry a TAGS="a,b" attribute
+      const tagsMatch = attrs.match(/TAGS="([^"]*)"/i);
+      const tags = tagsMatch
+        ? tagsMatch[1]
+            .split(",")
+            .map((t) => decodeHtmlEntities(t).trim().toLowerCase())
+            .filter(Boolean)
+        : undefined;
 
       const folder =
         folderStack.length > 0
           ? folderStack[folderStack.length - 1].toLowerCase()
           : "";
 
-      bookmarks.push({ url, title, folder, addDate });
+      bookmarks.push({ url, title, folder, addDate, tags });
     }
   }
 
@@ -104,10 +113,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json(
-        { error: "No file uploaded" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
     const html = await file.text();
@@ -127,7 +133,7 @@ export async function POST(req: NextRequest) {
     for (const bk of parsed) {
       try {
         const type = detectBookmarkType(bk.url);
-        const tags = bk.folder ? [bk.folder] : [];
+        const tags = [...(bk.tags ?? []), ...(bk.folder ? [bk.folder] : [])];
 
         // Convert Unix timestamp to ISO string
         let createdAt: string | undefined;

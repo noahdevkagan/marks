@@ -1,6 +1,7 @@
 const API_URL = "https://marks-drab.vercel.app";
 const SUPABASE_URL = "https://pwrrtbvaynlsxckazczx.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3cnJ0YnZheW5sc3hja2F6Y3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMzAxMTMsImV4cCI6MjA4NzcwNjExM30.lOOTgbwoUW6-5XSQC_kJn3K_iO-1m565jQ4FXQR3LiA";
+const SUPABASE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3cnJ0YnZheW5sc3hja2F6Y3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMzAxMTMsImV4cCI6MjA4NzcwNjExM30.lOOTgbwoUW6-5XSQC_kJn3K_iO-1m565jQ4FXQR3LiA";
 
 const loginView = document.getElementById("login-view");
 const saveView = document.getElementById("save-view");
@@ -19,7 +20,10 @@ let tweetMeta = null; // Populated when on a tweet page
 // Init
 document.addEventListener("DOMContentLoaded", async () => {
   config = await chrome.storage.local.get([
-    "token", "refreshToken", "supabaseUrl", "supabaseKey",
+    "token",
+    "refreshToken",
+    "supabaseUrl",
+    "supabaseKey",
   ]);
 
   if (config.token) {
@@ -43,14 +47,17 @@ loginForm.addEventListener("submit", async (e) => {
 
   try {
     // Sign in via Supabase REST API
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SUPABASE_KEY,
+    const res = await fetch(
+      `${SUPABASE_URL}/auth/v1/token?grant_type=password`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_KEY,
+        },
+        body: JSON.stringify({ email, password }),
       },
-      body: JSON.stringify({ email, password }),
-    });
+    );
 
     if (!res.ok) {
       const data = await res.json();
@@ -66,7 +73,10 @@ loginForm.addEventListener("submit", async (e) => {
     });
 
     config = await chrome.storage.local.get([
-      "token", "refreshToken", "supabaseUrl", "supabaseKey",
+      "token",
+      "refreshToken",
+      "supabaseUrl",
+      "supabaseKey",
     ]);
     loginView.style.display = "none";
     showSaveView();
@@ -84,19 +94,51 @@ function isTweetUrl(url) {
   try {
     const u = new URL(url);
     const host = u.hostname.replace("www.", "");
-    return (host === "x.com" || host === "twitter.com") && u.pathname.includes("/status/");
-  } catch { return false; }
+    return (
+      (host === "x.com" || host === "twitter.com") &&
+      u.pathname.includes("/status/")
+    );
+  } catch {
+    return false;
+  }
 }
 
 function isArchiveUrl(url) {
   try {
     const host = new URL(url).hostname;
     return /^archive\.(today|ph|is|li|vn|fo|md)$/.test(host);
-  } catch { return false; }
+  } catch {
+    return false;
+  }
+}
+
+const REVIEW_URL =
+  "https://chromewebstore.google.com/detail/marks-bookmarks-ai-reader/aedfdmhchamdnnoocknkiiaeacbaffia/reviews";
+const REVIEW_PROMPT_MIN_SAVES = 5;
+
+async function maybeShowReviewBanner() {
+  const { saveCount = 0, reviewPromptDone } = await chrome.storage.local.get([
+    "saveCount",
+    "reviewPromptDone",
+  ]);
+  if (reviewPromptDone || saveCount < REVIEW_PROMPT_MIN_SAVES) return;
+
+  const banner = document.getElementById("review-banner");
+  banner.style.display = "flex";
+  document.getElementById("review-rate").addEventListener("click", () => {
+    chrome.storage.local.set({ reviewPromptDone: true });
+    chrome.tabs.create({ url: REVIEW_URL });
+    window.close();
+  });
+  document.getElementById("review-dismiss").addEventListener("click", () => {
+    chrome.storage.local.set({ reviewPromptDone: true });
+    banner.style.display = "none";
+  });
 }
 
 async function showSaveView() {
   saveView.style.display = "block";
+  maybeShowReviewBanner();
 
   // Auto-fill from current tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -109,13 +151,24 @@ async function showSaveView() {
         const results = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+            function esc(s) {
+              return s
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+            }
             function cleanImgSrc(src) {
-              try { const u = new URL(src); return u.origin + u.pathname + "?format=jpg&name=large"; }
-              catch { return src; }
+              try {
+                const u = new URL(src);
+                return u.origin + u.pathname + "?format=jpg&name=large";
+              } catch {
+                return src;
+              }
             }
             function getInlineStyle(node, stopAt) {
-              let isBold = false, isItalic = false;
+              let isBold = false,
+                isItalic = false;
               let el = node.parentElement;
               while (el && el !== stopAt) {
                 const style = el.getAttribute("style") || "";
@@ -127,14 +180,18 @@ async function showSaveView() {
             }
             function processInline(el) {
               let html = "";
-              const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+              const walker = document.createTreeWalker(
+                el,
+                NodeFilter.SHOW_TEXT,
+              );
               let node;
-              while (node = walker.nextNode()) {
+              while ((node = walker.nextNode())) {
                 const text = node.textContent;
                 if (!text) continue;
                 const { isBold, isItalic } = getInlineStyle(node, el);
                 let escaped = esc(text);
-                if (isBold && isItalic) escaped = "<strong><em>" + escaped + "</em></strong>";
+                if (isBold && isItalic)
+                  escaped = "<strong><em>" + escaped + "</em></strong>";
                 else if (isBold) escaped = "<strong>" + escaped + "</strong>";
                 else if (isItalic) escaped = "<em>" + escaped + "</em>";
                 html += escaped;
@@ -162,9 +219,13 @@ async function showSaveView() {
             }
 
             // Check for X Article
-            const articleReadView = document.querySelector('[data-testid="twitterArticleReadView"]');
+            const articleReadView = document.querySelector(
+              '[data-testid="twitterArticleReadView"]',
+            );
             if (articleReadView) {
-              const titleEl = document.querySelector('[data-testid="twitter-article-title"]');
+              const titleEl = document.querySelector(
+                '[data-testid="twitter-article-title"]',
+              );
               const articleTitle = titleEl?.textContent?.trim() || "";
               const handle = getHandle();
               const container = findContentContainer(articleReadView, 0);
@@ -172,22 +233,45 @@ async function showSaveView() {
               const mediaUrls = [];
               if (container) {
                 const blocks = [];
-                const headerImg = articleReadView.children[0]?.querySelector("img");
+                const headerImg =
+                  articleReadView.children[0]?.querySelector("img");
                 if (headerImg?.src?.includes("pbs.twimg.com")) {
                   const src = cleanImgSrc(headerImg.src);
-                  blocks.push('<img src="' + esc(src) + '" alt="Article header" />');
+                  blocks.push(
+                    '<img src="' + esc(src) + '" alt="Article header" />',
+                  );
                   mediaUrls.push(src);
                 }
                 for (const child of container.children) {
                   const tag = child.tagName;
-                  if (tag === "BLOCKQUOTE") { blocks.push("<blockquote>" + esc(child.textContent?.trim() || "") + "</blockquote>"); continue; }
+                  if (tag === "BLOCKQUOTE") {
+                    blocks.push(
+                      "<blockquote>" +
+                        esc(child.textContent?.trim() || "") +
+                        "</blockquote>",
+                    );
+                    continue;
+                  }
                   if (tag === "SECTION") {
                     const pre = child.querySelector("pre");
-                    if (pre) { blocks.push("<pre><code>" + esc(pre.textContent || "") + "</code></pre>"); continue; }
+                    if (pre) {
+                      blocks.push(
+                        "<pre><code>" +
+                          esc(pre.textContent || "") +
+                          "</code></pre>",
+                      );
+                      continue;
+                    }
                     const img = child.querySelector("img");
                     if (img?.src?.includes("pbs.twimg.com")) {
                       const src = cleanImgSrc(img.src);
-                      blocks.push('<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />');
+                      blocks.push(
+                        '<img src="' +
+                          esc(src) +
+                          '" alt="' +
+                          esc(img.alt || "") +
+                          '" />',
+                      );
                       mediaUrls.push(src);
                       continue;
                     }
@@ -196,16 +280,29 @@ async function showSaveView() {
                     continue;
                   }
                   if (tag === "UL") {
-                    const items = [...child.querySelectorAll("li")].map(li => "<li>" + processInline(li) + "</li>");
+                    const items = [...child.querySelectorAll("li")].map(
+                      (li) => "<li>" + processInline(li) + "</li>",
+                    );
                     blocks.push("<ul>" + items.join("") + "</ul>");
                     continue;
                   }
                   const h2 = child.querySelector("h2");
-                  if (h2) { blocks.push("<h2>" + esc(h2.textContent?.trim() || "") + "</h2>"); continue; }
+                  if (h2) {
+                    blocks.push(
+                      "<h2>" + esc(h2.textContent?.trim() || "") + "</h2>",
+                    );
+                    continue;
+                  }
                   const img = child.querySelector("img");
                   if (img?.src?.includes("pbs.twimg.com")) {
                     const src = cleanImgSrc(img.src);
-                    blocks.push('<img src="' + esc(src) + '" alt="' + esc(img.alt || "") + '" />');
+                    blocks.push(
+                      '<img src="' +
+                        esc(src) +
+                        '" alt="' +
+                        esc(img.alt || "") +
+                        '" />',
+                    );
                     mediaUrls.push(src);
                     continue;
                   }
@@ -216,7 +313,14 @@ async function showSaveView() {
                 contentHtml = blocks.join("\n");
               }
               const bodyText = articleReadView.innerText?.trim() || "";
-              return { title: articleTitle, text: bodyText, contentHtml, handle, isArticle: true, mediaUrls };
+              return {
+                title: articleTitle,
+                text: bodyText,
+                contentHtml,
+                handle,
+                isArticle: true,
+                mediaUrls,
+              };
             }
             // Regular tweet
             const article = document.querySelector("article");
@@ -228,26 +332,42 @@ async function showSaveView() {
               function walkTweet(parent) {
                 let h = "";
                 for (const node of parent.childNodes) {
-                  if (node.nodeType === Node.TEXT_NODE) { h += esc(node.textContent || ""); }
-                  else if (node.nodeType === Node.ELEMENT_NODE) {
+                  if (node.nodeType === Node.TEXT_NODE) {
+                    h += esc(node.textContent || "");
+                  } else if (node.nodeType === Node.ELEMENT_NODE) {
                     const el = node;
-                    if (el.tagName === "BR") { h += "<br>"; }
-                    else if (el.tagName === "IMG") { h += el.alt || ""; }
-                    else if (el.tagName === "A" || el.querySelector("a")) {
+                    if (el.tagName === "BR") {
+                      h += "<br>";
+                    } else if (el.tagName === "IMG") {
+                      h += el.alt || "";
+                    } else if (el.tagName === "A" || el.querySelector("a")) {
                       const a = el.tagName === "A" ? el : el.querySelector("a");
                       const href = a?.getAttribute("href") || "";
-                      const fullHref = href.startsWith("/") ? "https://x.com" + href : href;
-                      h += '<a href="' + esc(fullHref) + '">' + esc(el.textContent || "") + "</a>";
-                    } else { h += walkTweet(el); }
+                      const fullHref = href.startsWith("/")
+                        ? "https://x.com" + href
+                        : href;
+                      h +=
+                        '<a href="' +
+                        esc(fullHref) +
+                        '">' +
+                        esc(el.textContent || "") +
+                        "</a>";
+                    } else {
+                      h += walkTweet(el);
+                    }
                   }
                 }
                 return h;
               }
               contentHtml = "<p>" + walkTweet(textEl) + "</p>";
-              const imgs = article?.querySelectorAll('img[src*="pbs.twimg.com"]') || [];
+              const imgs =
+                article?.querySelectorAll('img[src*="pbs.twimg.com"]') || [];
               for (const img of imgs) {
                 if (!img.src.includes("profile_images")) {
-                  contentHtml += '\n<img src="' + esc(cleanImgSrc(img.src)) + '" alt="Tweet media" />';
+                  contentHtml +=
+                    '\n<img src="' +
+                    esc(cleanImgSrc(img.src)) +
+                    '" alt="Tweet media" />';
                 }
               }
             }
@@ -287,50 +407,63 @@ async function showSaveView() {
               if (isLI) {
                 // Try multiple selectors — LinkedIn changes DOM frequently
                 const selectors = [
-                  '.feed-shared-update-v2__description',
-                  '.update-components-text',
+                  ".feed-shared-update-v2__description",
+                  ".update-components-text",
                   '[data-ad-preview="message"]',
-                  '.break-words',
+                  ".break-words",
                   // Broader: any span.break-words inside the main content
-                  '.feed-shared-update-v2 .break-words',
-                  '.feed-shared-inline-show-more-text',
+                  ".feed-shared-update-v2 .break-words",
+                  ".feed-shared-inline-show-more-text",
                   // Post detail page
-                  '.attributed-text-segment-list__content',
+                  ".attributed-text-segment-list__content",
                 ];
                 for (const sel of selectors) {
                   const el = document.querySelector(sel);
                   if (el) {
                     const text = el.innerText?.trim() || "";
-                    const firstLine = text.split('\n').find(l => l.trim().length > 0) || "";
+                    const firstLine =
+                      text.split("\n").find((l) => l.trim().length > 0) || "";
                     if (firstLine.length > 3) {
-                      return firstLine.length > 120 ? firstLine.slice(0, 117) + "..." : firstLine;
+                      return firstLine.length > 120
+                        ? firstLine.slice(0, 117) + "..."
+                        : firstLine;
                     }
                   }
                 }
                 // Last resort: find the largest text block in the main feed area
-                const allSpans = document.querySelectorAll('span[dir="ltr"], span.break-words, div.break-words');
+                const allSpans = document.querySelectorAll(
+                  'span[dir="ltr"], span.break-words, div.break-words',
+                );
                 let best = "";
                 for (const span of allSpans) {
                   const t = span.innerText?.trim() || "";
                   if (t.length > best.length && t.length > 20) best = t;
                 }
                 if (best) {
-                  const firstLine = best.split('\n').find(l => l.trim().length > 0) || "";
+                  const firstLine =
+                    best.split("\n").find((l) => l.trim().length > 0) || "";
                   if (firstLine.length > 3) {
-                    return firstLine.length > 120 ? firstLine.slice(0, 117) + "..." : firstLine;
+                    return firstLine.length > 120
+                      ? firstLine.slice(0, 117) + "..."
+                      : firstLine;
                   }
                 }
               }
               const og = document.querySelector('meta[property="og:title"]');
               const ogContent = og?.getAttribute("content") || "";
               // Skip generic LinkedIn og:titles
-              if (ogContent && !["Home", "Feed", "LinkedIn"].includes(ogContent)) return ogContent;
+              if (
+                ogContent &&
+                !["Home", "Feed", "LinkedIn"].includes(ogContent)
+              )
+                return ogContent;
               return "";
             },
             args: [isLinkedIn],
           });
           const extractedTitle = results?.[0]?.result;
-          if (extractedTitle && extractedTitle.length > 3) title = extractedTitle;
+          if (extractedTitle && extractedTitle.length > 3)
+            title = extractedTitle;
         } catch {
           // scripting may fail on chrome:// pages etc — use tab.title
         }
@@ -347,19 +480,20 @@ async function showSaveView() {
         target: { tabId: tab.id },
         func: () => {
           // Archive.is pages show the original URL in the #HEADER div
-          const header = document.querySelector('#HEADER');
+          const header = document.querySelector("#HEADER");
           if (header) {
-            const links = header.querySelectorAll('a');
+            const links = header.querySelectorAll("a");
             for (const a of links) {
               const href = a.href;
-              if (href && !href.includes('archive.') && href.startsWith('http')) return href;
+              if (href && !href.includes("archive.") && href.startsWith("http"))
+                return href;
             }
           }
           // Fallback: og:url meta tag
           const ogUrl = document.querySelector('meta[property="og:url"]');
           if (ogUrl) {
-            const content = ogUrl.getAttribute('content');
-            if (content && !content.includes('archive.')) return content;
+            const content = ogUrl.getAttribute("content");
+            if (content && !content.includes("archive.")) return content;
           }
           return null;
         },
@@ -408,7 +542,9 @@ async function fetchSuggestedTags(url, title) {
     });
     if (data.tags?.length > 0) {
       // Clear old suggestions
-      suggestedTagsEl.querySelectorAll(".suggested-tag").forEach((el) => el.remove());
+      suggestedTagsEl
+        .querySelectorAll(".suggested-tag")
+        .forEach((el) => el.remove());
       for (const tag of data.tags) {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -491,22 +627,30 @@ saveForm.addEventListener("submit", async (e) => {
     }),
   };
 
-  // Detect tweet URLs and add type metadata
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.replace("www.", "");
-    if ((host === "x.com" || host === "twitter.com") && parsed.pathname.includes("/status/")) {
-      data.type = "tweet";
-      const parts = parsed.pathname.split("/");
-      const handle = parts[1] || "";
-      if (handle) {
-        data.type_metadata = { author: handle };
+  // Fallback: detect tweet URLs by pattern when DOM extraction didn't run
+  // (don't overwrite tweetMeta — it has content_html/media_urls)
+  if (!tweetMeta) {
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.replace("www.", "");
+      if (
+        (host === "x.com" || host === "twitter.com") &&
+        parsed.pathname.includes("/status/")
+      ) {
+        data.type = "tweet";
+        const parts = parsed.pathname.split("/");
+        const handle = parts[1] || "";
+        if (handle) {
+          data.type_metadata = { author: handle };
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
-
-  const result = await chrome.runtime.sendMessage({ type: "save-bookmark", data });
+  const result = await chrome.runtime.sendMessage({
+    type: "save-bookmark",
+    data,
+  });
 
   if (result?.ok) {
     saveStatus.textContent = "Saved!";

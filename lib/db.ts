@@ -1,4 +1,5 @@
 import { createClient } from "./supabase-server";
+import { normalizeUrl } from "./normalize-url";
 
 export type Bookmark = {
   id: number;
@@ -90,16 +91,19 @@ export async function getBookmarkByUrl(
   userId: string,
 ): Promise<BookmarkWithTags | null> {
   const supabase = await createClient();
+  // Match both raw and normalized forms — rows saved before URL
+  // normalization existed are stored un-normalized.
+  const candidates = [...new Set([url, normalizeUrl(url)])];
   const { data } = await supabase
     .from("bookmarks")
     .select("*")
-    .eq("url", url)
+    .in("url", candidates)
     .eq("user_id", userId)
-    .single();
+    .limit(1);
 
-  if (!data) return null;
+  if (!data || data.length === 0) return null;
 
-  const [withTags] = await attachTags([data]);
+  const [withTags] = await attachTags([data[0]]);
   return withTags;
 }
 
@@ -121,7 +125,7 @@ export async function createBookmark(input: {
     .from("bookmarks")
     .upsert(
       {
-        url: bookmarkData.url,
+        url: normalizeUrl(bookmarkData.url),
         title: bookmarkData.title,
         description: bookmarkData.description ?? "",
         is_read: bookmarkData.is_read ?? false,
@@ -394,8 +398,14 @@ export async function getLibraryStats(): Promise<{
 
   const [saved, read, readLater] = await Promise.all([
     supabase.from("bookmarks").select("*", { count: "exact", head: true }),
-    supabase.from("bookmarks").select("*", { count: "exact", head: true }).eq("is_read", true),
-    supabase.from("bookmarks").select("*", { count: "exact", head: true }).eq("is_read", false),
+    supabase
+      .from("bookmarks")
+      .select("*", { count: "exact", head: true })
+      .eq("is_read", true),
+    supabase
+      .from("bookmarks")
+      .select("*", { count: "exact", head: true })
+      .eq("is_read", false),
   ]);
 
   return {

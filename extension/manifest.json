@@ -1,17 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Marks: Pocket Alternative, Bookmark Manager & AI Read Later",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Bookmark manager & read-later app. AI-tagged bookmarks, offline reader, Kindle highlights sync. The open Pocket alternative.",
-  "permissions": [
-    "activeTab",
-    "contextMenus",
-    "storage",
-    "scripting"
-  ],
-  "host_permissions": [
-    "https://*/*"
-  ],
+  "permissions": ["activeTab", "contextMenus", "storage", "scripting"],
+  "host_permissions": ["https://*/*"],
   "background": {
     "service_worker": "background.js"
   },
@@ -26,10 +19,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": [
-        "https://getmarks.sh/*",
-        "https://marks-drab.vercel.app/*"
-      ],
+      "matches": ["https://getmarks.sh/*", "https://marks-drab.vercel.app/*"],
       "js": ["content-marks-main.js"],
       "run_at": "document_start",
       "world": "MAIN"

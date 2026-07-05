@@ -13,6 +13,32 @@ export type ExtractedArticle = {
 
 const MIN_CONTENT_LENGTH = 200;
 
+// Bot walls (Bloomberg, Cloudflare, PerimeterX, …) often return HTTP 200 with
+// enough text to pass MIN_CONTENT_LENGTH, which short-circuits the fallback
+// chain and archives the CAPTCHA page as article content. Real block pages are
+// short, so the length guard keeps articles that merely mention these phrases
+// from being rejected.
+const BLOCK_PAGE_MAX_LENGTH = 4000;
+const BLOCK_PAGE_PATTERNS = [
+  /detected unusual activity/i, // Bloomberg
+  /are you a robot/i, // Bloomberg <title>
+  /not a robot/i, // reCAPTCHA prompts
+  /verify(?:ing)? (?:that )?you are (?:a )?human/i, // Cloudflare Turnstile
+  /checking your browser before accessing/i, // Cloudflare
+  /just a moment\.\.\./i, // Cloudflare <title>
+  /attention required!/i, // Cloudflare <title>
+  /access to this page has been denied/i, // PerimeterX
+  /pardon our interruption/i, // Imperva/Distil
+  /please complete the security check/i,
+  /enable javascript and cookies to continue/i,
+];
+
+function isBlockPage(title: string, text: string): boolean {
+  if (text.length > BLOCK_PAGE_MAX_LENGTH) return false;
+  const haystack = `${title} ${text.slice(0, 2000)}`;
+  return BLOCK_PAGE_PATTERNS.some((re) => re.test(haystack));
+}
+
 const FETCH_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -281,6 +307,8 @@ function parseWithReadability(
     // linkedom's textContent is unreliable, so derive text from HTML
     const textContent = stripHtml(article.content);
 
+    if (isBlockPage(article.title ?? "", textContent)) return null;
+
     return {
       title: article.title ?? "",
       content_html: article.content,
@@ -322,6 +350,11 @@ export async function extractMetadata(url: string): Promise<PageMetadata> {
     const description = (ogDesc || metaDesc || "").trim();
 
     const keywords = doc.querySelector('meta[name="keywords"]')?.getAttribute("content") || "";
+
+    // Don't save a bot wall's title/description as bookmark metadata
+    if (isBlockPage(title, description)) {
+      return { title: "", description: "", keywords: "" };
+    }
 
     return { title, description, keywords };
   } catch {

@@ -9,6 +9,10 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/api/auth") ||
     path === "/privacy" ||
     path === "/support" ||
+    path === "/blog" ||
+    path.startsWith("/blog/") ||
+    path === "/sitemap.xml" ||
+    path === "/robots.txt" ||
     path === "/marks-extension.zip" ||
     path === "/" ||
     path.startsWith("/s/") ||

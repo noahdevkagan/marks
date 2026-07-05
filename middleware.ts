@@ -13,6 +13,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/blog/") ||
     path === "/sitemap.xml" ||
     path === "/robots.txt" ||
+    path === "/googleae01987393f49975.html" ||
     path === "/marks-extension.zip" ||
     path === "/" ||
     path.startsWith("/s/") ||

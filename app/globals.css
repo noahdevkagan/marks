@@ -3380,3 +3380,24 @@ body:has(.public-share-wrapper) .mobile-bottom-nav {
   }
   .signup-save-banner strong { color: #ffe09a; }
 }
+
+/* ---------- Blog ---------- */
+.blog-content h2 {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.15rem;
+}
+.blog-content p {
+  margin-bottom: 0.9rem;
+  line-height: 1.65;
+}
+.blog-content ol,
+.blog-content ul {
+  margin: 0 0 0.9rem 1.4rem;
+  line-height: 1.65;
+}
+.blog-content li {
+  margin-bottom: 0.3rem;
+}
+.blog-content a {
+  color: var(--accent);
+}

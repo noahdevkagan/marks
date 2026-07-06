@@ -18,7 +18,7 @@ import {
   findQuoteTimestamp,
   formatTimestamp,
 } from "@/lib/youtube";
-import { fetchTweetOembed } from "@/lib/twitter";
+import { fetchTweetOembed, isJustUrl, resolveRedirectUrl } from "@/lib/twitter";
 
 export const maxDuration = 60;
 
@@ -42,9 +42,22 @@ export async function POST(req: NextRequest, { params }: Params) {
     const forceArchive = body.force_archive === true;
     const pageHtml = body.page_html as string | undefined;
 
+    // A tweet whose text is just a link (e.g. t.co pointing at an article)
+    // has no content of its own — resolve the redirect and archive the
+    // linked article instead of a blockquote containing only a URL. On
+    // success, `article` flows into the generic article storage below.
+    let article;
+    if (bookmark.type === "tweet" && !pageHtml) {
+      const linkTarget = isJustUrl(bookmark.description || bookmark.title || "");
+      if (linkTarget) {
+        const finalUrl = await resolveRedirectUrl(linkTarget);
+        article = await extractArticle(finalUrl ?? linkTarget);
+      }
+    }
+
     // Archive tweets: if page_html provided (e.g. from archive.today), extract full content
     // Otherwise preserve stored text + download media images as durable backup
-    if (bookmark.type === "tweet" && !pageHtml) {
+    if (bookmark.type === "tweet" && !pageHtml && !article) {
       const supabase = await createClient();
       let tweetText = bookmark.description || bookmark.title || "";
       let author = bookmark.type_metadata?.author
@@ -321,8 +334,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     // If pre-fetched HTML provided (e.g. from Chrome extension), parse it directly
     // Otherwise fall back to server-side fetch
-    let article;
-    if (pageHtml && pageHtml.length > 500) {
+    if (!article && pageHtml && pageHtml.length > 500) {
       article = extractFromHtml(pageHtml, bookmark.url);
     }
 

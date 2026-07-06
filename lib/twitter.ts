@@ -78,6 +78,25 @@ export async function resolveTweetLinkTitle(
   }
 }
 
+/**
+ * Follow redirects (e.g. t.co shortlinks) and return the final URL.
+ * Uses a curl UA because t.co serves a 301 to non-browser agents but an
+ * HTML/JS interstitial to browsers. Returns null if the URL doesn't resolve
+ * anywhere new.
+ */
+export async function resolveRedirectUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      redirect: "follow",
+      headers: { "User-Agent": "curl/8.5.0" },
+      signal: AbortSignal.timeout(10000),
+    });
+    return res.url && res.url !== url ? res.url : null;
+  } catch {
+    return null;
+  }
+}
+
 export function isTweetUrl(url: string): boolean {
   try {
     const parsed = new URL(url);

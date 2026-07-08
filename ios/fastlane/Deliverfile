@@ -7,8 +7,8 @@ metadata_path("./fastlane/metadata")
 screenshots_path("./fastlane/screenshots")
 
 # Submission settings
-submit_for_review(false)
-automatic_release(false)
+submit_for_review(true)
+automatic_release(true)
 skip_binary_upload(false)
 
 # Precheck can't inspect IAPs with API-key auth (and this app has none)

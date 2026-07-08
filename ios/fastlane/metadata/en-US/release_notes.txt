@@ -1,6 +1,1 @@
-Reader view improvements:
-
-- Articles now open in a clean reader view — if content wasn't saved yet, Marks extracts it on the spot instead of showing the raw web page
-- New reading toolbar: mark finished, edit tags, and share right from the article
-- Fixed mobile saves showing raw URLs instead of page titles
-- Fixed Kindle sync getting stuck on "Opening Amazon..."
+Refreshed app icon.

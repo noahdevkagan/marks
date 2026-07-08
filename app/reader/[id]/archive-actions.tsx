@@ -126,6 +126,11 @@ export function ArchiveActions({
           retry
         </button>
       )}
+      {isArchived && (
+        <button className="reader-action-btn" onClick={archive}>
+          re-extract
+        </button>
+      )}
       {(isArchived ? source === "readability" : true) && (
         <a
           className="reader-action-btn"

@@ -1,1 +1,1 @@
-pocket,instapaper,raindrop,reader,clip,saver,offline,reading,list,article,web,clipper,tweet,note
+bookmark,bookmarks,pocket,instapaper,raindrop,pinboard,offline,article,saver,clipper,pdf,highlights

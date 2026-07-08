@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
 import WebKit
+import StoreKit
 
 struct ReaderView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.requestReview) private var requestReview
     let bookmark: Bookmark
     @State private var showingSafari = false
     @State private var showingTagEditor = false
@@ -133,6 +135,25 @@ struct ReaderView: View {
             bookmark.syncStatus = .modified
         }
         try? context.save()
+        if bookmark.isRead {
+            maybeRequestReview()
+        }
+    }
+
+    /// Ask for an App Store rating once the reader has finished a few
+    /// articles — a happy moment — and at most once per app version.
+    private func maybeRequestReview() {
+        let defaults = UserDefaults.standard
+        let count = defaults.integer(forKey: "finishedArticleCount") + 1
+        defaults.set(count, forKey: "finishedArticleCount")
+
+        let version = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        guard count >= 3,
+              defaults.string(forKey: "lastReviewPromptVersion") != version,
+              !UITestSeeder.isUITest else { return }
+        defaults.set(version, forKey: "lastReviewPromptVersion")
+        requestReview()
     }
 
     private func toggleArchived() {

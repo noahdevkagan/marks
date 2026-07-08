@@ -5,6 +5,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Marks",
   description: "Private bookmark tracker",
+  // Safari smart banner linking to the iOS app
+  itunes: {
+    appId: "6760490336",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },

@@ -1,0 +1,1 @@
+marcadores,favoritos,guardar,leer despues,lector,articulos,sin conexion,pocket,instapaper,pdf

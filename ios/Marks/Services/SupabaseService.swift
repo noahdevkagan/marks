@@ -397,6 +397,10 @@ final class SupabaseService {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("Bearer \(accessToken ?? apiKey)", forHTTPHeaderField: "Authorization")
+        // The route extracts page metadata inline, which can be slow for some
+        // sites. Cap the wait — the bookmark is already saved locally and a
+        // timed-out push is retried by SyncEngine.
+        req.timeoutInterval = 30
 
         let body: [String: Any] = [
             "url": insert.url,

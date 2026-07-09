@@ -17,7 +17,12 @@ precheck_include_in_app_purchases(false)
 # App review info (demo account for reviewer)
 app_review_information(
   demo_user: "reviewer@getmarks.sh",
-  demo_password: "ReviewMarks2026!"
+  demo_password: "ReviewMarks2026!",
+  notes: "Resubmission for the 1.4.5 rejection:\n" \
+         "- Guideline 2.1(a): Saving a bookmark no longer blocks on the network. " \
+         "Tapping Save now stores the bookmark on-device and dismisses immediately; " \
+         "the server sync happens in the background. Covered by a UI test run on an 11-inch iPad.\n" \
+         "- Guideline 2.3.6: Age Rating now declares Unrestricted Web Access = Yes."
 )
 
 # Pricing: managed in App Store Connect (free). Re-uploading it hits

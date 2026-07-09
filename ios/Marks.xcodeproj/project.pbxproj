@@ -36,6 +36,7 @@
 		UITS000100010001000100AB /* UITestSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITS000200020002000200AB /* UITestSeeder.swift */; };
 		UT0001000100010001000100 /* MarksUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = UT0002000200020002000200 /* MarksUITests.swift */; };
 		UT0003000300030003000300 /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = UT0004000400040004000400 /* SnapshotHelper.swift */; };
+		UT0009000900090009000900 /* AddBookmarkFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = UT000A000A000A000A000A00 /* AddBookmarkFlowTests.swift */; };
 		EB0A1F2C3D4E5F6A7B8C9D0E /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5FC210DB290D7CE9BC3C8CBE /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -103,6 +104,7 @@
 		UITS000200020002000200AB /* UITestSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestSeeder.swift; sourceTree = "<group>"; };
 		UT0002000200020002000200 /* MarksUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarksUITests.swift; sourceTree = "<group>"; };
 		UT0004000400040004000400 /* SnapshotHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
+		UT000A000A000A000A000A00 /* AddBookmarkFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddBookmarkFlowTests.swift; sourceTree = "<group>"; };
 		UT0005000500050005000500 /* MarksUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MarksUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -221,6 +223,7 @@
 			isa = PBXGroup;
 			children = (
 				UT0002000200020002000200 /* MarksUITests.swift */,
+				UT000A000A000A000A000A00 /* AddBookmarkFlowTests.swift */,
 				UT0004000400040004000400 /* SnapshotHelper.swift */,
 			);
 			path = MarksUITests;
@@ -373,6 +376,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				UT0001000100010001000100 /* MarksUITests.swift in Sources */,
+				UT0009000900090009000900 /* AddBookmarkFlowTests.swift in Sources */,
 				UT0003000300030003000300 /* SnapshotHelper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -449,7 +453,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Marks/Marks.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = U433SX7BT8;
 				INFOPLIST_FILE = Marks/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Marks;
@@ -471,7 +475,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = U433SX7BT8;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Save to Marks";
@@ -491,7 +495,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Marks/Marks.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = U433SX7BT8;
 				INFOPLIST_FILE = Marks/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Marks;
@@ -568,7 +572,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = U433SX7BT8;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Save to Marks";
@@ -585,7 +589,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
+				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.4.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.noah.Marks.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -599,7 +604,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 9;
+				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.4.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.noah.Marks.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";

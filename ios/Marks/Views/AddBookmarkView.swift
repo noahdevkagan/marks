@@ -75,10 +75,8 @@ struct AddBookmarkView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        Task { await save() }
-                    }
-                    .disabled(url.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+                    Button("Save") { save() }
+                        .disabled(url.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
                 }
             }
         }
@@ -123,9 +121,14 @@ struct AddBookmarkView: View {
         }
     }
 
-    private func save() async {
+    private func save() {
+        guard !isSaving else { return }
         isSaving = true
-        let cleanURL = url.trimmingCharacters(in: .whitespaces)
+
+        var cleanURL = url.trimmingCharacters(in: .whitespaces)
+        if !cleanURL.hasPrefix("http://"), !cleanURL.hasPrefix("https://") {
+            cleanURL = "https://" + cleanURL
+        }
         let cleanTitle = title.trimmingCharacters(in: .whitespaces)
 
         // Save locally with pending sync status
@@ -139,24 +142,26 @@ struct AddBookmarkView: View {
         context.insert(bookmark)
         try? context.save()
 
-        // Try to push immediately via web API (which fetches page title automatically)
-        do {
-            let insert = SupabaseService.BookmarkInsert(
-                url: cleanURL,
-                title: bookmark.title,
-                description: "",
-                tags: tags
-            )
-            let response = try await SupabaseService.shared.createBookmarkViaWebAPI(insert)
-            bookmark.id = response.id
-            bookmark.title = response.title
-            bookmark.syncStatus = .synced
-            try? context.save()
-        } catch {
-            // Will sync later via SyncEngine which also uses web API
-        }
-
-        isSaving = false
+        // Dismiss before the network push — the sheet must never block on the
+        // web API (server-side extraction can take tens of seconds).
         dismiss()
+
+        let insert = SupabaseService.BookmarkInsert(
+            url: cleanURL,
+            title: bookmark.title,
+            description: "",
+            tags: tags
+        )
+        Task {
+            do {
+                let response = try await SupabaseService.shared.createBookmarkViaWebAPI(insert)
+                bookmark.id = response.id
+                bookmark.title = response.title
+                bookmark.syncStatus = .synced
+                try? context.save()
+            } catch {
+                // Stays .pending; SyncEngine pushes it on the next sync
+            }
+        }
     }
 }

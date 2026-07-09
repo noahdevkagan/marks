@@ -31,6 +31,14 @@ Take App Store screenshots
 
 Build and upload to TestFlight
 
+### ios upload_only
+
+```sh
+[bundle exec] fastlane ios upload_only
+```
+
+Upload only — re-uses the existing Marks.ipa (no rebuild)
+
 ### ios release
 
 ```sh
@@ -46,6 +54,22 @@ Upload metadata and screenshots to App Store
 ```
 
 Full release: build, upload binary + metadata
+
+### ios ship_upload_only
+
+```sh
+[bundle exec] fastlane ios ship_upload_only
+```
+
+Upload existing Marks.ipa to App Store + push metadata (no rebuild)
+
+### ios bump
+
+```sh
+[bundle exec] fastlane ios bump
+```
+
+Bump version number (e.g. fastlane bump version:1.4.1)
 
 ----
 

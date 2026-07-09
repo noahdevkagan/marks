@@ -20,6 +20,7 @@ struct BookmarkListView: View {
                     Button { showingAdd = true } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityIdentifier("addBookmarkButton")
                 }
             }
             .sheet(isPresented: $showingAdd) {

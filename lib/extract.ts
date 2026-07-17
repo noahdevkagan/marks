@@ -30,6 +30,7 @@ const BLOCK_PAGE_PATTERNS = [
   /access to this page has been denied/i, // PerimeterX
   /pardon our interruption/i, // Imperva/Distil
   /please complete the security check/i,
+  /one more step/i, // archive.today reCAPTCHA interstitial heading
   /enable javascript and cookies to continue/i,
 ];
 
@@ -105,26 +106,87 @@ async function tryReadability(
   }
 }
 
+// archive.today rotates across these mirror domains; they share one backend.
+// Different frontends sit behind the reCAPTCHA independently, so trying more
+// than one raises the odds of reaching a snapshot without a challenge.
+const ARCHIVE_HOSTS = ["archive.ph", "archive.today", "archive.is"];
+
+// Resolve an *existing* snapshot's direct short URL (e.g. https://archive.is/XwDGC)
+// via the Memento TimeMap. The TimeMap is a machine-facing endpoint
+// (`/timemap/<url>`) that returns snapshot URLs as text/plain and is usually
+// NOT behind the interactive "One more step" reCAPTCHA that the HTML
+// `/newest/` *submit* flow triggers. Fetching a known snapshot skips the
+// capture request that provokes a fresh challenge.
+async function resolveArchiveSnapshot(url: string): Promise<string | null> {
+  for (const host of ARCHIVE_HOSTS) {
+    try {
+      const res = await fetch(`https://${host}/timemap/${encodeURI(url)}`, {
+        headers: FETCH_HEADERS,
+        redirect: "follow",
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!res.ok) continue;
+
+      const body = await res.text();
+      // Lines look like:
+      //   <https://archive.ph/XwDGC>; rel="memento"; datetime="Wed, 16 Jul 2026 ..."
+      const mementos = [
+        ...body.matchAll(
+          /<(https?:\/\/[^>]+)>\s*;[^,]*rel="[^"]*memento[^"]*"[^,]*datetime="([^"]+)"/gi,
+        ),
+      ]
+        .map((m) => ({ url: m[1], time: Date.parse(m[2]) || 0 }))
+        .filter((m) => m.url);
+
+      if (mementos.length === 0) continue;
+
+      // Newest snapshot first
+      mementos.sort((a, b) => b.time - a.time);
+      return mementos[0].url;
+    } catch {
+      // try the next mirror
+    }
+  }
+  return null;
+}
+
 async function tryArchivePh(
   url: string,
 ): Promise<Omit<ExtractedArticle, "source"> | null> {
-  try {
-    // archive.ph/newest/<url> redirects to the most recent snapshot
-    // Short timeout — archive.ph usually returns CAPTCHA (429) for server-side requests
-    const archiveUrl = `https://archive.ph/newest/${encodeURI(url)}`;
-    const res = await fetch(archiveUrl, {
-      headers: FETCH_HEADERS,
-      redirect: "follow",
-      signal: AbortSignal.timeout(10000),
-    });
+  // Prefer an existing snapshot resolved via Memento — fetching a known
+  // short URL avoids the /newest/ submit flow that provokes the reCAPTCHA.
+  // Fall back to /newest/ (the fresh-capture path, often challenged for
+  // server-side/datacenter IPs) only if no snapshot is on record.
+  const snapshot = await resolveArchiveSnapshot(url);
+  const candidates = [
+    ...(snapshot ? [snapshot] : []),
+    `https://archive.ph/newest/${encodeURI(url)}`,
+  ];
 
-    if (!res.ok) return null;
+  for (const archiveUrl of candidates) {
+    try {
+      const res = await fetch(archiveUrl, {
+        headers: FETCH_HEADERS,
+        redirect: "follow",
+        signal: AbortSignal.timeout(10000),
+      });
 
-    const html = await res.text();
-    return parseWithReadability(html, url);
-  } catch {
-    return null;
+      if (!res.ok) continue;
+
+      const html = await res.text();
+      // parseWithReadability rejects challenge/block pages via isBlockPage,
+      // so a captured "One more step" page returns null and we try the next.
+      const parsed = parseWithReadability(html, url);
+      if (parsed && parsed.content_text.length >= MIN_CONTENT_LENGTH) {
+        return parsed;
+      }
+    } catch {
+      // try the next candidate
+    }
   }
+
+  return null;
 }
 
 async function tryWaybackMachine(

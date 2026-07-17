@@ -40,6 +40,19 @@ function testBlockPageDetection() {
     process.exit(1);
   }
 
+  // archive.today "One more step" reCAPTCHA interstitial — must be rejected so
+  // a captured challenge page is never saved as article content.
+  const archiveChallenge = `<html><head><title>archive.is</title></head><body>
+    ${para("One more step")}
+    ${para("Please complete the security check to access archive.is")}
+    ${para("Why do I have to complete a CAPTCHA? Completing the CAPTCHA proves you are a human and gives you temporary access.")}
+  </article></body></html>`;
+
+  if (extractFromHtml(archiveChallenge, "https://archive.is/newest/https://example.com/x") !== null) {
+    console.error("FAIL: archive.today reCAPTCHA interstitial was not rejected");
+    process.exit(1);
+  }
+
   // A long real article that *mentions* bot detection must NOT be rejected
   const filler = para(
     "Publishers have spent the last decade in an arms race with scrapers. ".repeat(12),
@@ -55,7 +68,7 @@ function testBlockPageDetection() {
     process.exit(1);
   }
 
-  console.log("OK: block-page detection (2 walls rejected, 1 real article kept)\n");
+  console.log("OK: block-page detection (3 walls rejected, 1 real article kept)\n");
 }
 
 async function main() {

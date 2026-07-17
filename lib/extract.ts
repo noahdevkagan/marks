@@ -111,44 +111,53 @@ async function tryReadability(
 // than one raises the odds of reaching a snapshot without a challenge.
 const ARCHIVE_HOSTS = ["archive.ph", "archive.today", "archive.is"];
 
+// Pull the newest snapshot short URL out of a Memento TimeMap body.
+// Lines look like:
+//   <https://archive.ph/XwDGC>; rel="memento"; datetime="Wed, 16 Jul 2026 ..."
+function newestMemento(body: string): string | null {
+  const mementos = [
+    ...body.matchAll(
+      /<(https?:\/\/[^>]+)>\s*;[^,]*rel="[^"]*memento[^"]*"[^,]*datetime="([^"]+)"/gi,
+    ),
+  ]
+    .map((m) => ({ url: m[1], time: Date.parse(m[2]) || 0 }))
+    .filter((m) => m.url);
+
+  if (mementos.length === 0) return null;
+  mementos.sort((a, b) => b.time - a.time); // newest first
+  return mementos[0].url;
+}
+
 // Resolve an *existing* snapshot's direct short URL (e.g. https://archive.is/XwDGC)
 // via the Memento TimeMap. The TimeMap is a machine-facing endpoint
 // (`/timemap/<url>`) that returns snapshot URLs as text/plain and is usually
 // NOT behind the interactive "One more step" reCAPTCHA that the HTML
 // `/newest/` *submit* flow triggers. Fetching a known snapshot skips the
 // capture request that provokes a fresh challenge.
+//
+// The mirrors are raced in parallel with a tight timeout: archive.today is
+// unreliable from datacenter IPs, so this stays a cheap best-effort probe that
+// never starves the rest of the fallback chain (Wayback, Jina) of the request's
+// time budget.
 async function resolveArchiveSnapshot(url: string): Promise<string | null> {
-  for (const host of ARCHIVE_HOSTS) {
-    try {
-      const res = await fetch(`https://${host}/timemap/${encodeURI(url)}`, {
-        headers: FETCH_HEADERS,
-        redirect: "follow",
-        signal: AbortSignal.timeout(8000),
-      });
+  const probes = ARCHIVE_HOSTS.map(async (host) => {
+    const res = await fetch(`https://${host}/timemap/${encodeURI(url)}`, {
+      headers: FETCH_HEADERS,
+      redirect: "follow",
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) throw new Error(`timemap ${host} ${res.status}`);
+    const snapshot = newestMemento(await res.text());
+    if (!snapshot) throw new Error(`timemap ${host} no memento`);
+    return snapshot;
+  });
 
-      if (!res.ok) continue;
-
-      const body = await res.text();
-      // Lines look like:
-      //   <https://archive.ph/XwDGC>; rel="memento"; datetime="Wed, 16 Jul 2026 ..."
-      const mementos = [
-        ...body.matchAll(
-          /<(https?:\/\/[^>]+)>\s*;[^,]*rel="[^"]*memento[^"]*"[^,]*datetime="([^"]+)"/gi,
-        ),
-      ]
-        .map((m) => ({ url: m[1], time: Date.parse(m[2]) || 0 }))
-        .filter((m) => m.url);
-
-      if (mementos.length === 0) continue;
-
-      // Newest snapshot first
-      mementos.sort((a, b) => b.time - a.time);
-      return mementos[0].url;
-    } catch {
-      // try the next mirror
-    }
+  try {
+    // First mirror to return a usable snapshot wins; ignore the rest.
+    return await Promise.any(probes);
+  } catch {
+    return null;
   }
-  return null;
 }
 
 async function tryArchivePh(
@@ -169,7 +178,7 @@ async function tryArchivePh(
       const res = await fetch(archiveUrl, {
         headers: FETCH_HEADERS,
         redirect: "follow",
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(8000),
       });
 
       if (!res.ok) continue;
